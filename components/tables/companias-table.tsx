@@ -100,7 +100,7 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
               <TableCell className="font-medium">{company.nombre}</TableCell>
               <TableCell>
                 {company.isPublished ? (
-                  <Badge variant="default" className="bg-green-500">
+                  <Badge variant="default" className="text-black dark:text-black bg-green-500 hover:bg-green-600">
                     <Check className="mr-1 h-3 w-3" /> Publicada
                   </Badge>
                 ) : (
@@ -111,8 +111,8 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
               </TableCell>
               <TableCell>
                 {company.isFeatured ? (
-                  <Badge variant="secondary">
-                    <Check className="mr-1 h-3 w-3" /> Destacada
+                  <Badge variant="secondary" className="text-black dark:text-black bg-amber-400 hover:bg-amber-300">
+                    <Check className="mr-1 h-3 w-3 " /> Destacada
                   </Badge>
                 ) : (
                   <Badge variant="outline">No</Badge>

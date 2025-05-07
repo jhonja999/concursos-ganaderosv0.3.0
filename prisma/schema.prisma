@@ -98,10 +98,34 @@ model Concurso {
 
   // Relación N-N con Ganado
   ganadoEnConcurso GanadoEnConcurso[]
+  
+  // Relación con Categorías específicas del concurso
+  categorias ConcursoCategoria[]
 
   @@index([companyId])
 }
 
+// ---------------------------------------------------------
+// MODELO DE CATEGORÍA DE CONCURSO
+// ---------------------------------------------------------
+model ConcursoCategoria {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String?
+  orden       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relación con el concurso
+  concursoId  String
+  concurso    Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
+  
+  // Relación con Ganado
+  ganado      Ganado[]
+
+  @@unique([concursoId, nombre])
+  @@index([concursoId])
+}
 
 // ---------------------------------------------------------
 // MODELO DE GANADO
@@ -112,8 +136,8 @@ model Ganado {
   slug         String   @unique // Add slug field for ganado
   fechaNac     DateTime?
   /* diasNacida   Int? */
-  categoria    String?
-  subcategoria String?
+  categoria    String?      // Campo antiguo para compatibilidad
+  subcategoria String?      // Campo antiguo para compatibilidad
   establo      String?
   remate       Boolean?
   propietario  String?      // Mantener para compatibilidad
@@ -135,11 +159,16 @@ model Ganado {
   // Relación con Criador
   criadorId    String?
   criador      Criador?     @relation(fields: [criadorId], references: [id])
+  
+  // Relación con Categoría de Concurso
+  categoriaConcursoId String?
+  categoriaConcurso   ConcursoCategoria? @relation(fields: [categoriaConcursoId], references: [id])
 
   // Si usas la tabla pivote GanadoImage
   GanadoImage GanadoImage[]
 
   @@index([criadorId])
+  @@index([categoriaConcursoId])
 }
 
 // Añadir después del modelo Ganado
