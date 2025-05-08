@@ -2,15 +2,15 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(req: Request, { params }: { params: { concursoId: string } }) {
+export async function GET(req: Request, { params }: { params: { slug: string } }) {
   try {
-    if (!params.concursoId) {
-      return new NextResponse("Concurso ID is required", { status: 400 })
+    if (!params.slug) {
+      return new NextResponse("Slug is required", { status: 400 })
     }
 
     const concurso = await prisma.concurso.findUnique({
       where: {
-        id: params.concursoId,
+        slug: params.slug,
       },
       include: {
         company: true,
@@ -34,6 +34,10 @@ export async function GET(req: Request, { params }: { params: { concursoId: stri
       },
     })
 
+    if (!concurso) {
+      return new NextResponse("Concurso no encontrado", { status: 404 })
+    }
+
     return NextResponse.json(concurso)
   } catch (error) {
     console.error("[CONCURSO_GET]", error)
@@ -41,9 +45,9 @@ export async function GET(req: Request, { params }: { params: { concursoId: stri
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { concursoId: string } }) {
+export async function PATCH(req: Request, { params }: { params: { slug: string } }) {
   try {
-    const { userId } =await auth()
+    const { userId } =  await auth()
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
@@ -53,13 +57,37 @@ export async function PATCH(req: Request, { params }: { params: { concursoId: st
 
     const { nombre, slug, descripcion, fechaInicio, fechaFin, companyId, isFeatured, isPublished } = body
 
-    if (!params.concursoId) {
-      return new NextResponse("Concurso ID is required", { status: 400 })
+    if (!params.slug) {
+      return new NextResponse("Slug is required", { status: 400 })
+    }
+
+    // Verificar que el concurso existe
+    const existingConcurso = await prisma.concurso.findUnique({
+      where: {
+        slug: params.slug,
+      },
+    })
+
+    if (!existingConcurso) {
+      return new NextResponse("Concurso no encontrado", { status: 404 })
+    }
+
+    // Verificar si el nuevo slug ya existe (si se está cambiando)
+    if (slug !== params.slug) {
+      const slugExists = await prisma.concurso.findUnique({
+        where: {
+          slug,
+        },
+      })
+
+      if (slugExists) {
+        return new NextResponse("El slug ya está en uso", { status: 400 })
+      }
     }
 
     const concurso = await prisma.concurso.update({
       where: {
-        id: params.concursoId,
+        id: existingConcurso.id,
       },
       data: {
         nombre,
@@ -80,21 +108,32 @@ export async function PATCH(req: Request, { params }: { params: { concursoId: st
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { concursoId: string } }) {
+export async function DELETE(req: Request, { params }: { params: { slug: string } }) {
   try {
-    const { userId } =await auth()
+    const { userId } = await auth()
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    if (!params.concursoId) {
-      return new NextResponse("Concurso ID is required", { status: 400 })
+    if (!params.slug) {
+      return new NextResponse("Slug is required", { status: 400 })
+    }
+
+    // Verificar que el concurso existe
+    const existingConcurso = await prisma.concurso.findUnique({
+      where: {
+        slug: params.slug,
+      },
+    })
+
+    if (!existingConcurso) {
+      return new NextResponse("Concurso no encontrado", { status: 404 })
     }
 
     const concurso = await prisma.concurso.delete({
       where: {
-        id: params.concursoId,
+        id: existingConcurso.id,
       },
     })
 

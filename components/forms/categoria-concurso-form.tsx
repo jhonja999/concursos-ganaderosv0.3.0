@@ -19,20 +19,22 @@ const formSchema = z.object({
     message: "El nombre debe tener al menos 2 caracteres.",
   }),
   descripcion: z.string().optional(),
-  orden: z.coerce.number().int().min(0).default(0),
+  orden: z.coerce.number().int().min(0),
   sexo: z.enum(["MACHO", "HEMBRA"]).optional().nullable(),
   edadMinima: z.coerce.number().int().min(0).optional().nullable(),
   edadMaxima: z.coerce.number().int().min(0).optional().nullable(),
 })
 
+
 type FormValues = z.infer<typeof formSchema>
 
 interface CategoriaConcursoFormProps {
   concursoId: string
+  concursoSlug: string
   initialData?: FormValues & { id: string }
 }
 
-export function CategoriaConcursoForm({ concursoId, initialData }: CategoriaConcursoFormProps) {
+export function CategoriaConcursoForm({ concursoId, concursoSlug, initialData }: CategoriaConcursoFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -71,7 +73,7 @@ export function CategoriaConcursoForm({ concursoId, initialData }: CategoriaConc
       }
 
       toast.success(`Categoría ${initialData ? "actualizada" : "creada"} correctamente`)
-      router.push(`/dashboard/concursos/${concursoId}/categorias`)
+      router.push(`/dashboard/concursos/${concursoSlug}/categorias`)
       router.refresh()
     } catch (error) {
       console.error(error)

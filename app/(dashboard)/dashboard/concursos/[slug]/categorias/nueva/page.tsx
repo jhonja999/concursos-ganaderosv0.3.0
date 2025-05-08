@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 
 interface NuevaCategoriaPageProps {
   params: {
-    concursoId: string
+    slug: string
   }
 }
 
@@ -21,7 +21,7 @@ export default async function NuevaCategoriaPage({ params }: NuevaCategoriaPageP
   // Verificar que el concurso existe
   const concurso = await prisma.concurso.findUnique({
     where: {
-      id: params.concursoId,
+      slug: params.slug,
     },
   })
 
@@ -36,7 +36,7 @@ export default async function NuevaCategoriaPage({ params }: NuevaCategoriaPageP
         text="Crea una nueva categoría para el concurso."
       />
 
-      <CategoriaConcursoForm concursoId={params.concursoId} />
+      <CategoriaConcursoForm concursoId={concurso.id} concursoSlug={params.slug} />
     </DashboardShell>
   )
 }

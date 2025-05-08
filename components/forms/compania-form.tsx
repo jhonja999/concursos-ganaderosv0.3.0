@@ -24,9 +24,10 @@ const formSchema = z.object({
   }),
   descripcion: z.string().optional(),
   logo: z.string().url().optional().or(z.literal("")),
-  isFeatured: z.boolean().default(false),
-  isPublished: z.boolean().default(false),
+  isFeatured: z.boolean(),
+  isPublished: z.boolean(),
 })
+
 
 type FormValues = z.infer<typeof formSchema>
 

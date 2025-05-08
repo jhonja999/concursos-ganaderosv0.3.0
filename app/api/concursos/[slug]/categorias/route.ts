@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 
-export async function POST(req: Request, { params }: { params: { concursoId: string } }) {
+export async function POST(req: Request, { params }: { params: { slug: string } }) {
   try {
     const { userId } = await auth()
 
@@ -13,8 +13,8 @@ export async function POST(req: Request, { params }: { params: { concursoId: str
     const body = await req.json()
     const { nombre, descripcion, orden, sexo, edadMinima, edadMaxima } = body
 
-    if (!params.concursoId) {
-      return new NextResponse("Concurso ID is required", { status: 400 })
+    if (!params.slug) {
+      return new NextResponse("Slug is required", { status: 400 })
     }
 
     if (!nombre) {
@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { concursoId: str
     // Verificar que el concurso existe
     const concurso = await prisma.concurso.findUnique({
       where: {
-        id: params.concursoId,
+        slug: params.slug,
       },
     })
 
@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: { concursoId: str
         sexo,
         edadMinima,
         edadMaxima,
-        concursoId: params.concursoId,
+        concursoId: concurso.id,
       },
     })
 
@@ -51,15 +51,26 @@ export async function POST(req: Request, { params }: { params: { concursoId: str
   }
 }
 
-export async function GET(req: Request, { params }: { params: { concursoId: string } }) {
+export async function GET(req: Request, { params }: { params: { slug: string } }) {
   try {
-    if (!params.concursoId) {
-      return new NextResponse("Concurso ID is required", { status: 400 })
+    if (!params.slug) {
+      return new NextResponse("Slug is required", { status: 400 })
+    }
+
+    // Verificar que el concurso existe
+    const concurso = await prisma.concurso.findUnique({
+      where: {
+        slug: params.slug,
+      },
+    })
+
+    if (!concurso) {
+      return new NextResponse("Concurso no encontrado", { status: 404 })
     }
 
     const categorias = await prisma.concursoCategoria.findMany({
       where: {
-        concursoId: params.concursoId,
+        concursoId: concurso.id,
       },
       orderBy: [
         {

@@ -7,10 +7,11 @@ import { prisma } from "@/lib/prisma"
 
 interface EditarCategoriaPageProps {
   params: {
-    concursoId: string
+    slug: string
     categoriaId: string
   }
 }
+
 
 export default async function EditarCategoriaPage({ params }: EditarCategoriaPageProps) {
   const { userId } = await auth()
@@ -22,7 +23,7 @@ export default async function EditarCategoriaPage({ params }: EditarCategoriaPag
   // Verificar que el concurso existe
   const concurso = await prisma.concurso.findUnique({
     where: {
-      id: params.concursoId,
+      slug: params.slug,
     },
   })
 
@@ -37,8 +38,8 @@ export default async function EditarCategoriaPage({ params }: EditarCategoriaPag
     },
   })
 
-  if (!categoria || categoria.concursoId !== params.concursoId) {
-    redirect(`/dashboard/concursos/${params.concursoId}/categorias`)
+  if (!categoria || categoria.concursoId !== concurso.id) {
+    redirect(`/dashboard/concursos/${params.slug}/categorias`)
   }
 
   return (
@@ -49,7 +50,8 @@ export default async function EditarCategoriaPage({ params }: EditarCategoriaPag
       />
 
       <CategoriaConcursoForm
-        concursoId={params.concursoId}
+        concursoId={concurso.id}
+        concursoSlug={params.slug}
         initialData={{
           id: categoria.id,
           nombre: categoria.nombre,

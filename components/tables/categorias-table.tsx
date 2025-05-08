@@ -45,9 +45,10 @@ interface CategoriaData {
 interface CategoriasTableProps {
   data: CategoriaData[]
   concursoId: string
+  concursoSlug: string
 }
 
-export function CategoriasTable({ data, concursoId }: CategoriasTableProps) {
+export function CategoriasTable({ data, concursoId, concursoSlug }: CategoriasTableProps) {
   const router = useRouter()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [categoriaToDelete, setCategoriaToDelete] = useState<string | null>(null)
@@ -140,13 +141,13 @@ export function CategoriasTable({ data, concursoId }: CategoriasTableProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                     <DropdownMenuItem asChild>
-                      <Link href={`/dashboard/concursos/${concursoId}/categorias/${categoria.id}/ganado`}>
+                      <Link href={`/dashboard/concursos/${concursoSlug}/categorias/${categoria.id}/ganado`}>
                         <Eye className="mr-2 h-4 w-4" />
                         Ver ganado
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/dashboard/concursos/${concursoId}/categorias/${categoria.id}`}>
+                      <Link href={`/dashboard/concursos/${concursoSlug}/categorias/${categoria.id}`}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Editar
                       </Link>

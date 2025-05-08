@@ -17,7 +17,7 @@ export function SidebarToggle({ children }: SidebarToggleProps) {
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="h-full relative"
+      className="h-full relative z-20"
     >
       <div className="relative h-full">
         <div className={cn(

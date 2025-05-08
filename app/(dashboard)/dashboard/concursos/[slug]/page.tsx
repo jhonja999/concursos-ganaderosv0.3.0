@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma"
 
 interface ConcursoPageProps {
   params: {
-    concursoId: string
+    slug: string
   }
 }
 
@@ -24,7 +24,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
 
   const concurso = await prisma.concurso.findUnique({
     where: {
-      id: params.concursoId,
+      slug: params.slug,
     },
     include: {
       company: true,
@@ -44,7 +44,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
   // Obtener las categorías del concurso
   const categorias = await prisma.concursoCategoria.findMany({
     where: {
-      concursoId: params.concursoId,
+      concursoId: concurso.id,
     },
     orderBy: [
       {
@@ -60,7 +60,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
   // Obtener el ganado del concurso
   const ganado = await prisma.ganadoEnConcurso.findMany({
     where: {
-      concursoId: params.concursoId,
+      concursoId: concurso.id,
     },
     include: {
       ganado: {
@@ -87,7 +87,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
           <Link href="/dashboard/concursos">
             <Button variant="outline">Volver a concursos</Button>
           </Link>
-          <Link href={`/dashboard/concursos/${params.concursoId}/editar`}>
+          <Link href={`/dashboard/concursos/${params.slug}/editar`}>
             <Button variant="outline">Editar concurso</Button>
           </Link>
         </div>
@@ -104,6 +104,10 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Nombre</p>
                 <p className="font-medium">{concurso.nombre}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Slug</p>
+                <p className="font-medium">{concurso.slug}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Compañía</p>
@@ -157,7 +161,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
             <CardTitle>Categorías</CardTitle>
             <CardDescription>Categorías definidas para este concurso</CardDescription>
           </div>
-          <Link href={`/dashboard/concursos/${params.concursoId}/categorias`}>
+          <Link href={`/dashboard/concursos/${params.slug}/categorias`}>
             <Button>
               <Tag className="mr-2 h-4 w-4" />
               Gestionar Categorías
@@ -175,7 +179,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
                       <p className="text-sm text-muted-foreground line-clamp-1">{categoria.descripcion}</p>
                     )}
                   </div>
-                  <Link href={`/dashboard/concursos/${params.concursoId}/categorias/${categoria.id}`}>
+                  <Link href={`/dashboard/concursos/${params.slug}/categorias/${categoria.id}`}>
                     <Button variant="outline" size="sm">
                       Editar
                     </Button>
@@ -184,7 +188,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               ))}
               {concurso._count.categorias > 5 && (
                 <div className="text-center">
-                  <Link href={`/dashboard/concursos/${params.concursoId}/categorias`}>
+                  <Link href={`/dashboard/concursos/${params.slug}/categorias`}>
                     <Button variant="link">Ver todas las categorías ({concurso._count.categorias})</Button>
                   </Link>
                 </div>
@@ -197,7 +201,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               <p className="mb-4 text-sm text-muted-foreground">
                 Este concurso no tiene categorías definidas. Añade categorías para organizar el ganado.
               </p>
-              <Link href={`/dashboard/concursos/${params.concursoId}/categorias/nueva`}>
+              <Link href={`/dashboard/concursos/${params.slug}/categorias/nueva`}>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
                   Añadir Categoría
@@ -214,7 +218,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
             <CardTitle>Ganado Participante</CardTitle>
             <CardDescription>Ganado registrado en este concurso</CardDescription>
           </div>
-          <Link href={`/dashboard/ganado/nuevo?concursoId=${params.concursoId}`}>
+          <Link href={`/dashboard/ganado/nuevo?concursoId=${concurso.id}`}>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Añadir Ganado
@@ -246,7 +250,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
                       </p>
                     </div>
                   </div>
-                  <Link href={`/dashboard/ganado/${participacion.ganado.id}`}>
+                  <Link href={`/dashboard/ganado/${participacion.ganado.slug}`}>
                     <Button variant="outline" size="sm">
                       Ver
                     </Button>
@@ -255,7 +259,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               ))}
               {concurso._count.ganadoEnConcurso > 5 && (
                 <div className="text-center">
-                  <Link href={`/dashboard/concursos/${params.concursoId}/ganado`}>
+                  <Link href={`/dashboard/concursos/${params.slug}/ganado`}>
                     <Button variant="link">Ver todo el ganado ({concurso._count.ganadoEnConcurso})</Button>
                   </Link>
                 </div>
@@ -268,7 +272,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               <p className="mb-4 text-sm text-muted-foreground">
                 Este concurso no tiene ganado registrado. Añade ganado para comenzar.
               </p>
-              <Link href={`/dashboard/ganado/nuevo?concursoId=${params.concursoId}`}>
+              <Link href={`/dashboard/ganado/nuevo?concursoId=${concurso.id}`}>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
                   Añadir Ganado

@@ -3,9 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { MoreHorizontal, Pencil, Trash2, Eye, Check, X } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Eye, Calendar } from "lucide-react"
 import { toast } from "sonner"
-import { formatDate } from "@/lib/utils"
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -29,49 +28,56 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-interface Company {
+interface CategoriaData {
   id: string
   nombre: string
-  slug: string
   descripcion: string | null
-  logo: string | null
-  isFeatured: boolean
-  isPublished: boolean
-  createdAt: Date
-  updatedAt: Date
+  orden: number
+  sexo: "MACHO" | "HEMBRA" | null
+  edadMinima: number | null
+  edadMaxima: number | null
+  concursoId: string
+  concurso: {
+    nombre: string
+    slug: string
+  }
+  _count: {
+    ganado: number
+  }
 }
 
-interface CompaniasTableProps {
-  data: Company[]
+interface CategoriasGeneralTableProps {
+  data: CategoriaData[]
 }
 
-export function CompaniasTable({ data }: CompaniasTableProps) {
+export function CategoriasGeneralTable({ data }: CategoriasGeneralTableProps) {
   const router = useRouter()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [companyToDelete, setCompanyToDelete] = useState<string | null>(null)
+  const [categoriaToDelete, setCategoriaToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async (id: string) => {
     setIsDeleting(true)
 
     try {
-      const response = await fetch(`/api/companias/${id}`, {
+      const response = await fetch(`/api/concursos/categorias/${id}`, {
         method: "DELETE",
       })
 
       if (!response.ok) {
-        throw new Error("Error al eliminar la compañía")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Error al eliminar la categoría")
       }
 
-      toast.success("Compañía eliminada correctamente")
+      toast.success("Categoría eliminada correctamente")
       router.refresh()
     } catch (error) {
       console.error(error)
-      toast.error("Error al eliminar la compañía")
+      toast.error(error instanceof Error ? error.message : "Error al eliminar la categoría")
     } finally {
       setIsDeleting(false)
       setIsDeleteDialogOpen(false)
-      setCompanyToDelete(null)
+      setCategoriaToDelete(null)
     }
   }
 
@@ -80,45 +86,62 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Concurso</TableHead>
             <TableHead>Nombre</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead>Destacada</TableHead>
-            <TableHead>Fecha de creación</TableHead>
+            <TableHead>Sexo</TableHead>
+            <TableHead>Rango de Edad</TableHead>
+            <TableHead>Orden</TableHead>
+            <TableHead>Ganado</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-center">
-                No hay compañías registradas
+              <TableCell colSpan={7} className="text-center">
+                No hay categorías registradas
               </TableCell>
             </TableRow>
           )}
-          {data.map((company) => (
-            <TableRow key={company.id}>
-              <TableCell className="font-medium">{company.nombre}</TableCell>
+          {data.map((categoria) => (
+            <TableRow key={categoria.id}>
               <TableCell>
-                {company.isPublished ? (
-                  <Badge variant="default" className="text-black dark:text-black bg-green-500 hover:bg-green-400">
-                    <Check className="mr-1 h-3 w-3" /> Publicada
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="flex items-center gap-1 text-black dark:text-black bg-orange-400 hover:bg-orange-300">
-                    <X className="mr-1 h-3 w-3" /> Borrador
-                  </Badge>
+                <Link
+                  href={`/dashboard/concursos/${categoria.concurso.slug}`}
+                  className="flex items-center gap-2 hover:underline"
+                >
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {categoria.concurso.nombre}
+                </Link>
+              </TableCell>
+              <TableCell className="font-medium">
+                {categoria.nombre}
+                {categoria.descripcion && (
+                  <p className="text-xs text-muted-foreground line-clamp-1">{categoria.descripcion}</p>
                 )}
               </TableCell>
               <TableCell>
-                {company.isFeatured ? (
-                  <Badge variant="secondary" className="text-black dark:text-black bg-cyan-600 hover:bg-cyan-400/80">
-                    <Check className="mr-1 h-3 w-3 " /> Destacada
+                {categoria.sexo ? (
+                  <Badge variant={categoria.sexo === "MACHO" ? "default" : "secondary"}>
+                    {categoria.sexo === "MACHO" ? "Macho" : "Hembra"}
                   </Badge>
                 ) : (
-                  <Badge variant="outline">No</Badge>
+                  <Badge variant="outline">Ambos</Badge>
                 )}
               </TableCell>
-              <TableCell>{formatDate(company.createdAt)}</TableCell>
+              <TableCell>
+                {categoria.edadMinima || categoria.edadMaxima ? (
+                  <span>
+                    {categoria.edadMinima ? `${categoria.edadMinima} días` : "Sin mínimo"}
+                    {" - "}
+                    {categoria.edadMaxima ? `${categoria.edadMaxima} días` : "Sin máximo"}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Sin restricción</span>
+                )}
+              </TableCell>
+              <TableCell>{categoria.orden}</TableCell>
+              <TableCell>{categoria._count.ganado}</TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -130,13 +153,13 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                     <DropdownMenuItem asChild>
-                      <Link href={`/companias/${company.slug}`}>
+                      <Link href={`/dashboard/concursos/${categoria.concurso.slug}/categorias/${categoria.id}/ganado`}>
                         <Eye className="mr-2 h-4 w-4" />
-                        Ver
+                        Ver ganado
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/dashboard/companias/${company.id}`}>
+                      <Link href={`/dashboard/concursos/${categoria.concurso.slug}/categorias/${categoria.id}`}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Editar
                       </Link>
@@ -145,9 +168,10 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() => {
-                        setCompanyToDelete(company.id)
+                        setCategoriaToDelete(categoria.id)
                         setIsDeleteDialogOpen(true)
                       }}
+                      disabled={categoria._count.ganado > 0}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Eliminar
@@ -165,13 +189,13 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente la compañía y todos sus datos asociados.
+              Esta acción no se puede deshacer. Se eliminará permanentemente la categoría.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => companyToDelete && handleDelete(companyToDelete)}
+              onClick={() => categoriaToDelete && handleDelete(categoriaToDelete)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >

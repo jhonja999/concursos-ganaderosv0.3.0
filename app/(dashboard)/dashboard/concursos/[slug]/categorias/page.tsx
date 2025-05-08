@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma"
 
 interface CategoriasPageProps {
   params: {
-    concursoId: string
+    slug: string
   }
 }
 
@@ -23,7 +23,7 @@ export default async function CategoriasPage({ params }: CategoriasPageProps) {
 
   const concurso = await prisma.concurso.findUnique({
     where: {
-      id: params.concursoId,
+      slug: params.slug,
     },
   })
 
@@ -33,7 +33,7 @@ export default async function CategoriasPage({ params }: CategoriasPageProps) {
 
   const categorias = await prisma.concursoCategoria.findMany({
     where: {
-      concursoId: params.concursoId,
+      concursoId: concurso.id,
     },
     orderBy: [
       {
@@ -56,10 +56,10 @@ export default async function CategoriasPage({ params }: CategoriasPageProps) {
     <DashboardShell>
       <DashboardHeader heading={`Categorías - ${concurso.nombre}`} text="Gestiona las categorías del concurso.">
         <div className="flex gap-2">
-          <Link href={`/dashboard/concursos/${params.concursoId}`}>
+          <Link href={`/dashboard/concursos/${params.slug}`}>
             <Button variant="outline">Volver al concurso</Button>
           </Link>
-          <Link href={`/dashboard/concursos/${params.concursoId}/categorias/nueva`}>
+          <Link href={`/dashboard/concursos/${params.slug}/categorias/nueva`}>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Nueva Categoría
@@ -68,7 +68,7 @@ export default async function CategoriasPage({ params }: CategoriasPageProps) {
         </div>
       </DashboardHeader>
 
-      <CategoriasTable data={categorias} concursoId={params.concursoId} />
+      <CategoriasTable data={categorias} concursoSlug={params.slug} concursoId={concurso.id} />
     </DashboardShell>
   )
 }

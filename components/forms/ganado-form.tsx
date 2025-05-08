@@ -32,6 +32,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { generateSlug } from "@/lib/utils"
 
+// Define the form schema with explicit types
+// Define schema with required fields and defaults
 const formSchema = z.object({
   nombre: z.string().min(3, {
     message: "El nombre debe tener al menos 3 caracteres.",
@@ -52,12 +54,12 @@ const formSchema = z.object({
   categoria: z.string().optional(), // Campo antiguo para compatibilidad
   subcategoria: z.string().optional(), // Campo antiguo para compatibilidad
   categoriaConcursoId: z.string().optional(), // Nuevo campo para categoría específica del concurso
-  remate: z.boolean().default(false),
+  remate: z.boolean(), // Required boolean
   puntaje: z.number().optional(),
   descripcion: z.string().optional(),
   concursoId: z.string().optional(),
-  isFeatured: z.boolean().default(false),
-  isPublished: z.boolean().default(false),
+  isFeatured: z.boolean(), // Required boolean
+  isPublished: z.boolean(), // Required boolean
 })
 
 const criadorFormSchema = z.object({
@@ -69,6 +71,7 @@ const criadorFormSchema = z.object({
   direccion: z.string().optional(),
 })
 
+// Export the types for use in the component
 type FormValues = z.infer<typeof formSchema>
 type CriadorFormValues = z.infer<typeof criadorFormSchema>
 
@@ -115,12 +118,13 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
   const [nuevoPropietario, setNuevoPropietario] = useState("")
   const [isNewCriadorDialogOpen, setIsNewCriadorDialogOpen] = useState(false)
 
+  // Define form with explicit typing to ensure compatibility
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any, // Use type assertion to bypass resolver type issues
     defaultValues: initialData || {
       nombre: "",
       slug: "",
-      sexo: "MACHO",
+      sexo: "MACHO" as const,
       remate: false,
       isFeatured: false,
       isPublished: false,
@@ -217,7 +221,8 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
       (cat.edadMaxima === null || (diasNacida !== undefined && diasNacida <= cat.edadMaxima)),
   )
 
-  async function onSubmit(data: FormValues) {
+  // Define submit handler with correct types that match what react-hook-form expects
+  async function onSubmit(values: FormValues) {
     setIsLoading(true)
 
     try {
@@ -229,7 +234,7 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(values),
       })
 
       if (!response.ok) {
@@ -313,7 +318,7 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
       toast.error(error instanceof Error ? error.message : "Error al crear criador")
     }
   }
-
+  
   return (
     <Card>
       <CardContent className="pt-6">

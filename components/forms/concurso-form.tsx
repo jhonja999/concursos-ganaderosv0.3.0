@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateSlug } from "@/lib/utils"
 
+// Define the schema for form validation
 const formSchema = z.object({
   nombre: z.string().min(3, {
     message: "El nombre debe tener al menos 3 caracteres.",
@@ -36,10 +37,11 @@ const formSchema = z.object({
   companyId: z.string({
     required_error: "La compañía organizadora es requerida.",
   }),
-  isFeatured: z.boolean().default(false),
-  isPublished: z.boolean().default(false),
+  isFeatured: z.boolean(),
+  isPublished: z.boolean(),
 })
 
+// Infer TypeScript type from Zod schema
 type FormValues = z.infer<typeof formSchema>
 
 interface ConcursoFormProps {
@@ -47,20 +49,26 @@ interface ConcursoFormProps {
     id: string
     nombre: string
   }[]
+  initialData?: Partial<FormValues>
+  concursoId?: string
 }
 
-export function ConcursoForm({ companies }: ConcursoFormProps) {
+export function ConcursoForm({ companies, initialData, concursoId }: ConcursoFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
+  // Set up form with default values
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nombre: "",
-      slug: "",
-      descripcion: "",
-      isFeatured: false,
-      isPublished: false,
+      nombre: initialData?.nombre || "",
+      slug: initialData?.slug || "",
+      descripcion: initialData?.descripcion || "",
+      fechaInicio: initialData?.fechaInicio || undefined,
+      fechaFin: initialData?.fechaFin || undefined,
+      companyId: initialData?.companyId || "",
+      isFeatured: initialData?.isFeatured || false,
+      isPublished: initialData?.isPublished || false,
     },
   })
 
@@ -75,8 +83,11 @@ export function ConcursoForm({ companies }: ConcursoFormProps) {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/concursos", {
-        method: "POST",
+      const url = concursoId ? `/api/concursos/${concursoId}` : "/api/concursos"
+      const method = concursoId ? "PATCH" : "POST"
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -87,8 +98,10 @@ export function ConcursoForm({ companies }: ConcursoFormProps) {
         throw new Error("Error al crear el concurso")
       }
 
-      toast.success("Concurso creado correctamente")
-      router.push("/dashboard/concursos")
+      const concurso = await response.json()
+
+      toast.success(`Concurso ${concursoId ? "actualizado" : "creado"} correctamente`)
+      router.push(`/dashboard/concursos/${concurso.slug}`)
       router.refresh()
     } catch (error) {
       console.error(error)
@@ -283,7 +296,7 @@ export function ConcursoForm({ companies }: ConcursoFormProps) {
             </div>
 
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creando..." : "Crear nuevo concurso"}
+              {isLoading ? "Guardando..." : concursoId ? "Actualizar concurso" : "Crear nuevo concurso"}
             </Button>
           </form>
         </Form>
