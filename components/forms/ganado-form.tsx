@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { generateSlug } from "@/lib/utils"
 
 const formSchema = z.object({
@@ -48,8 +49,9 @@ const formSchema = z.object({
   establo: z.string().optional(),
   propietario: z.string().optional(),
   criadorId: z.string().optional(),
-  categoria: z.string().optional(),
-  subcategoria: z.string().optional(),
+  categoria: z.string().optional(), // Campo antiguo para compatibilidad
+  subcategoria: z.string().optional(), // Campo antiguo para compatibilidad
+  categoriaConcursoId: z.string().optional(), // Nuevo campo para categoría específica del concurso
   remate: z.boolean().default(false),
   puntaje: z.number().optional(),
   descripcion: z.string().optional(),
@@ -69,6 +71,15 @@ const criadorFormSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 type CriadorFormValues = z.infer<typeof criadorFormSchema>
+
+interface ConcursoCategoria {
+  id: string
+  nombre: string
+  descripcion: string | null
+  sexo: "MACHO" | "HEMBRA" | null
+  edadMinima: number | null
+  edadMaxima: number | null
+}
 
 interface GanadoFormProps {
   concursos: {
@@ -94,6 +105,7 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
     "Novillos",
     "Toros",
   ])
+  const [categoriasConcurso, setCategoriasConcurso] = useState<ConcursoCategoria[]>([])
   const [openRaza, setOpenRaza] = useState(false)
   const [openEstablo, setOpenEstablo] = useState(false)
   const [openPropietario, setOpenPropietario] = useState(false)
@@ -154,6 +166,29 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
     fetchData()
   }, [])
 
+  // Cargar categorías específicas del concurso cuando se selecciona un concurso
+  const watchConcursoId = form.watch("concursoId")
+  useEffect(() => {
+    async function fetchCategoriasConcurso() {
+      if (!watchConcursoId) {
+        setCategoriasConcurso([])
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/concursos/${watchConcursoId}/categorias`)
+        if (response.ok) {
+          const data = await response.json()
+          setCategoriasConcurso(data)
+        }
+      } catch (error) {
+        console.error("Error al cargar categorías del concurso:", error)
+      }
+    }
+
+    fetchCategoriasConcurso()
+  }, [watchConcursoId])
+
   // Generar slug automáticamente al cambiar el nombre
   const watchNombre = form.watch("nombre")
   if (watchNombre && !form.getValues("slug")) {
@@ -169,6 +204,18 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
       form.setValue("diasNacida", diasNacida)
     }
   }, [watchFechaNac, form])
+
+  // Filtrar categorías por sexo
+  const watchSexo = form.watch("sexo")
+  const categoriasFiltradas = categoriasConcurso.filter((cat) => cat.sexo === null || cat.sexo === watchSexo)
+
+  // Filtrar categorías por edad
+  const diasNacida = form.watch("diasNacida")
+  const categoriasFiltradas2 = categoriasFiltradas.filter(
+    (cat) =>
+      (cat.edadMinima === null || (diasNacida !== undefined && diasNacida >= cat.edadMinima)) &&
+      (cat.edadMaxima === null || (diasNacida !== undefined && diasNacida <= cat.edadMaxima)),
+  )
 
   async function onSubmit(data: FormValues) {
     setIsLoading(true)
@@ -767,71 +814,158 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
               />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="categoria"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Categoría</FormLabel>
-                    <Popover open={openCategoria} onOpenChange={setOpenCategoria}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            className={`w-full justify-between ${!field.value && "text-muted-foreground"}`}
-                          >
-                            {field.value ? categorias.find((cat) => cat === field.value) : "Seleccionar categoría"}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                          <CommandInput placeholder="Buscar categoría..." />
-                          <CommandList>
-                            <CommandEmpty>No se encontraron categorías.</CommandEmpty>
-                            <CommandGroup>
-                              {categorias.map((cat) => (
-                                <CommandItem
-                                  key={cat}
-                                  value={cat}
-                                  onSelect={() => {
-                                    field.onChange(cat)
-                                    setOpenCategoria(false)
-                                  }}
-                                >
-                                  <Check
-                                    className={`mr-2 h-4 w-4 ${cat === field.value ? "opacity-100" : "opacity-0"}`}
-                                  />
-                                  {cat}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="concursoId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Concurso</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value)
+                      // Limpiar la categoría de concurso al cambiar de concurso
+                      form.setValue("categoriaConcursoId", undefined)
+                    }}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar concurso (opcional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Ninguno</SelectItem>
+                      {concursos.map((concurso) => (
+                        <SelectItem key={concurso.id} value={concurso.id}>
+                          {concurso.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Concurso al que pertenece este ganado (opcional)</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
+            {watchConcursoId ? (
               <FormField
                 control={form.control}
-                name="subcategoria"
+                name="categoriaConcursoId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subcategoría</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Subcategoría" {...field} />
-                    </FormControl>
+                    <FormLabel>Categoría del Concurso</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar categoría del concurso" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Sin categoría</SelectItem>
+                        {categoriasFiltradas2.length > 0 ? (
+                          categoriasFiltradas2.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.nombre}
+                              {cat.sexo && (
+                                <Badge variant={cat.sexo === "MACHO" ? "default" : "secondary"} className="ml-2">
+                                  {cat.sexo === "MACHO" ? "Macho" : "Hembra"}
+                                </Badge>
+                              )}
+                              {(cat.edadMinima || cat.edadMaxima) && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  {cat.edadMinima ? `${cat.edadMinima} días` : ""}
+                                  {cat.edadMinima && cat.edadMaxima ? " - " : ""}
+                                  {cat.edadMaxima ? `${cat.edadMaxima} días` : ""}
+                                </span>
+                              )}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No hay categorías disponibles para este sexo/edad
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Categoría específica del concurso seleccionado. Solo se muestran categorías compatibles con el
+                      sexo y edad del ganado.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="categoria"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Categoría (General)</FormLabel>
+                      <Popover open={openCategoria} onOpenChange={setOpenCategoria}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={`w-full justify-between ${!field.value && "text-muted-foreground"}`}
+                            >
+                              {field.value ? categorias.find((cat) => cat === field.value) : "Seleccionar categoría"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Buscar categoría..." />
+                            <CommandList>
+                              <CommandEmpty>No se encontraron categorías.</CommandEmpty>
+                              <CommandGroup>
+                                {categorias.map((cat) => (
+                                  <CommandItem
+                                    key={cat}
+                                    value={cat}
+                                    onSelect={() => {
+                                      field.onChange(cat)
+                                      setOpenCategoria(false)
+                                    }}
+                                  >
+                                    <Check
+                                      className={`mr-2 h-4 w-4 ${cat === field.value ? "opacity-100" : "opacity-0"}`}
+                                    />
+                                    {cat}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        Categoría general (solo se usa cuando no se selecciona un concurso)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="subcategoria"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subcategoría</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Subcategoría" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-2">
               <FormField
@@ -879,32 +1013,6 @@ export function GanadoForm({ concursos, initialData, ganadoId }: GanadoFormProps
                   <FormControl>
                     <Textarea placeholder="Descripción del ganado" className="min-h-32" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="concursoId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Concurso</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar concurso (opcional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {concursos.map((concurso) => (
-                        <SelectItem key={concurso.id} value={concurso.id}>
-                          {concurso.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>Concurso al que pertenece este ganado (opcional)</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

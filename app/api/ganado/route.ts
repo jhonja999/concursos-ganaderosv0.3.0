@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   try {
-    const { userId } =await auth()
+    const { userId } = await auth()
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
@@ -21,8 +21,10 @@ export async function POST(req: Request) {
       raza,
       establo,
       propietario,
+      criadorId,
       categoria,
       subcategoria,
+      categoriaConcursoId,
       remate,
       puntaje,
       descripcion,
@@ -43,6 +45,20 @@ export async function POST(req: Request) {
       return new NextResponse("Sexo es requerido", { status: 400 })
     }
 
+    // Verificar que la categoría de concurso pertenece al concurso seleccionado
+    if (categoriaConcursoId && concursoId) {
+      const categoriaExiste = await prisma.concursoCategoria.findFirst({
+        where: {
+          id: categoriaConcursoId,
+          concursoId: concursoId,
+        },
+      })
+
+      if (!categoriaExiste) {
+        return new NextResponse("La categoría seleccionada no pertenece al concurso", { status: 400 })
+      }
+    }
+
     // Crear el ganado
     const ganado = await prisma.ganado.create({
       data: {
@@ -54,8 +70,10 @@ export async function POST(req: Request) {
         raza,
         establo,
         propietario,
+        criadorId,
         categoria,
         subcategoria,
+        categoriaConcursoId,
         remate,
         puntaje,
         descripcion,
@@ -87,6 +105,7 @@ export async function GET(req: Request) {
     const concursoId = searchParams.get("concursoId")
     const sexo = searchParams.get("sexo")
     const categoria = searchParams.get("categoria")
+    const categoriaConcursoId = searchParams.get("categoriaConcursoId")
     const isFeatured = searchParams.get("isFeatured")
     const isPublished = searchParams.get("isPublished")
 
@@ -103,6 +122,13 @@ export async function GET(req: Request) {
       where = {
         ...where,
         categoria,
+      }
+    }
+
+    if (categoriaConcursoId) {
+      where = {
+        ...where,
+        categoriaConcursoId,
       }
     }
 
@@ -146,6 +172,8 @@ export async function GET(req: Request) {
             },
           },
         },
+        categoriaConcurso: true,
+        criador: true,
         GanadoImage: {
           include: {
             image: true,

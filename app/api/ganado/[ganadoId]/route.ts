@@ -18,6 +18,12 @@ export async function GET(req: Request, { params }: { params: { ganadoId: string
             concurso: true,
           },
         },
+        categoriaConcurso: {
+          include: {
+            concurso: true,
+          },
+        },
+        criador: true,
         GanadoImage: {
           include: {
             image: true,
@@ -35,7 +41,7 @@ export async function GET(req: Request, { params }: { params: { ganadoId: string
 
 export async function PATCH(req: Request, { params }: { params: { ganadoId: string } }) {
   try {
-    const { userId } =await auth()
+    const { userId } = await auth()
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
@@ -52,8 +58,10 @@ export async function PATCH(req: Request, { params }: { params: { ganadoId: stri
       raza,
       establo,
       propietario,
+      criadorId,
       categoria,
       subcategoria,
+      categoriaConcursoId,
       remate,
       puntaje,
       descripcion,
@@ -64,6 +72,20 @@ export async function PATCH(req: Request, { params }: { params: { ganadoId: stri
 
     if (!params.ganadoId) {
       return new NextResponse("Ganado ID is required", { status: 400 })
+    }
+
+    // Verificar que la categoría de concurso pertenece al concurso seleccionado
+    if (categoriaConcursoId && concursoId) {
+      const categoriaExiste = await prisma.concursoCategoria.findFirst({
+        where: {
+          id: categoriaConcursoId,
+          concursoId: concursoId,
+        },
+      })
+
+      if (!categoriaExiste) {
+        return new NextResponse("La categoría seleccionada no pertenece al concurso", { status: 400 })
+      }
     }
 
     // Actualizar el ganado
@@ -80,8 +102,10 @@ export async function PATCH(req: Request, { params }: { params: { ganadoId: stri
         raza,
         establo,
         propietario,
+        criadorId,
         categoria,
         subcategoria,
+        categoriaConcursoId,
         remate,
         puntaje,
         descripcion,
@@ -122,7 +146,7 @@ export async function PATCH(req: Request, { params }: { params: { ganadoId: stri
 
 export async function DELETE(req: Request, { params }: { params: { ganadoId: string } }) {
   try {
-    const { userId } =await auth()
+    const { userId } = await auth()
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })

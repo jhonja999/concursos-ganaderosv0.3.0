@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Building, Calendar, Tag, MilkIcon as Cow } from "lucide-react"
+import { Building, Calendar, Tag, ArrowRight, MilkIcon as Cow } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function QuickActions() {
@@ -40,14 +40,17 @@ export function QuickActions() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {actions.map((action) => (
           <Link key={action.href} href={action.href}>
-            <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                <div className={`p-2 rounded-md ${action.color}`}>
-                  <action.icon className="h-5 w-5 text-white" />
+            <Card className="group h-full transition-colors hover:bg-accent/50 cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-md ${action.color}`}>
+                    <action.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">{action.title}</CardTitle>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-base">{action.title}</CardTitle>
-                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 transform group-hover:translate-x-1" />
               </CardHeader>
               <CardContent>
                 <CardDescription>{action.description}</CardDescription>

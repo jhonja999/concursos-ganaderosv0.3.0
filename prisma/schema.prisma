@@ -113,9 +113,12 @@ model ConcursoCategoria {
   nombre      String
   descripcion String?
   orden       Int      @default(0)
+  sexo        Sexo?    // Opcional: si la categoría es específica para un sexo
+  edadMinima  Int?     // Edad mínima en días (opcional)
+  edadMaxima  Int?     // Edad máxima en días (opcional)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relación con el concurso
   concursoId  String
   concurso    Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
@@ -123,7 +126,6 @@ model ConcursoCategoria {
   // Relación con Ganado
   ganado      Ganado[]
 
-  @@unique([concursoId, nombre])
   @@index([concursoId])
 }
 
