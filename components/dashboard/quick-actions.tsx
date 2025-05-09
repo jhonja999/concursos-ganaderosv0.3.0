@@ -14,7 +14,8 @@ export function QuickActions() {
     {
       title: "Nuevo Concurso",
       description: "Crea un nuevo concurso ganadero",
-      href: "/dashboard/concursos/nuevo",
+      /* href: "/dashboard/concursos/nuevo", */
+      href: "/dashboard/concursos",
       icon: Calendar,
       color: "bg-green-500",
     },
