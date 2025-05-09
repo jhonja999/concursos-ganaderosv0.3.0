@@ -42,7 +42,7 @@ export function UserNav() {
 
       {/* Botón Home solo visible en escritorio */}
       <div className="hidden md:block">
-        <Link href="/home">
+        <Link href="/">
           <Button variant="outline" size="icon" className="rounded-full">
             <Home className="h-4 w-4" />
           </Button>

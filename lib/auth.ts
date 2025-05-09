@@ -24,7 +24,7 @@ export async function requireAdmin() {
   const role = await getUserRole()
 
   if (role !== "admin") {
-    redirect("/home")
+    redirect("/dashboard")
   }
 }
 

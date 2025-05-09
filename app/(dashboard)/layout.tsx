@@ -9,6 +9,7 @@ import { DashboardNav } from "@/components/dashboard/layout/DashboardNav"
 import { UserNav } from "@/components/dashboard/layout/UserNav"
 import { SidebarToggle } from "@/components/dashboard/layout/SidebarToggle"
 import { requireAdmin } from "@/lib/auth"
+import Link from "next/link"
 
 export default async function DashboardLayout({
   children,
@@ -46,7 +47,9 @@ export default async function DashboardLayout({
           
           <div className="flex items-center gap-2 font-semibold">
             <BarChart3 className="h-5 w-5 text-primary md:hidden" />
-            <span className="text-lg">Sistema de Gestión</span>
+            <Link href="/">
+              <span className="text-lg">Sistema de Gestión</span>
+            </Link>
           </div>
           
           <div className="ml-auto flex items-center">

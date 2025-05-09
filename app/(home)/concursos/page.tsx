@@ -106,7 +106,8 @@ export default async function ConcursosPage() {
 
       {concursos.length === 0 && (
         <div className="py-12 text-center">
-          <p className="text-lg text-muted-foreground">No hay concursos disponibles en este momento.</p>
+          <h3 className="text-lg font-medium">No hay concursos disponibles en este momento.</h3>
+          <p className="text-muted-foreground">Vuelve más tarde para ver los próximos concursos.</p>        
         </div>
       )}
     </div>
