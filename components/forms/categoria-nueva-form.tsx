@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, SubmitHandler } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
 
@@ -14,21 +14,18 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
+// Usamos z.input para reflejar la forma de datos que el formulario introduce
 const formSchema = z.object({
-  concursoId: z.string({
-    required_error: "Debes seleccionar un concurso.",
-  }),
-  nombre: z.string().min(2, {
-    message: "El nombre debe tener al menos 2 caracteres.",
-  }),
+  concursoId: z.string({ required_error: "Debes seleccionar un concurso." }),
+  nombre: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   descripcion: z.string().optional(),
-  orden: z.coerce.number().int().min(0).default(0),
+  orden: z.coerce.number().int().min(0).optional(),
   sexo: z.enum(["MACHO", "HEMBRA", "SIN_RESTRICCION"]).optional(),
   edadMinima: z.coerce.number().int().min(0).optional().nullable(),
   edadMaxima: z.coerce.number().int().min(0).optional().nullable(),
 })
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = z.input<typeof formSchema>
 
 interface Concurso {
   id: string
@@ -58,47 +55,46 @@ export function CategoriaNuevaForm({ concursos }: CategoriaNuevaFormProps) {
     },
   })
 
-  // Cuando cambia el concurso seleccionado, actualizar el slug
+  // Actualiza slug al cambiar concurso
   const handleConcursoChange = (concursoId: string) => {
-    const concurso = concursos.find((c) => c.id === concursoId)
-    if (concurso) {
-      setSelectedConcursoSlug(concurso.slug)
-    }
+    const match = concursos.find((c) => c.id === concursoId)
+    if (match) setSelectedConcursoSlug(match.slug)
   }
 
-  async function onSubmit(data: FormValues) {
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true)
-
     try {
-      const response = await fetch(`/api/concursos/${data.concursoId}/categorias`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      })
+      const response = await fetch(
+        `/api/concursos/${data.concursoId}/categorias`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...data,
+            orden: data.orden ?? 0,
+          }),
+        }
+      )
 
-      if (!response.ok) {
-        throw new Error("Error al crear la categoría")
-      }
+      if (!response.ok) throw new Error("Error al crear la categoría")
 
       toast.success("Categoría creada correctamente")
 
-      // Redirigir a la página de categorías del concurso seleccionado
+      // Redirigir
       if (selectedConcursoSlug) {
         router.push(`/dashboard/concursos/${selectedConcursoSlug}/categorias`)
       } else {
         router.push(`/dashboard/categorias`)
       }
-
       router.refresh()
-    } catch (error) {
-      console.error(error)
+    } catch (err) {
+      console.error(err)
       toast.error("Error al crear la categoría")
     } finally {
       setIsLoading(false)
     }
   }
+
 
   return (
     <Card>
