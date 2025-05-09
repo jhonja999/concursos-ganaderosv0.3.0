@@ -103,7 +103,14 @@ export default async function CategoriasPage({ searchParams }: CategoriasPagePro
   return (
     <DashboardShell>
       <DashboardHeader heading="Categorías" text="Gestiona todas las categorías de los concursos." />
-
+      
+          {(search || concursoId) && (
+            <Link href="/dashboard/categorias/nuevo">
+              <Button variant="secondary" size="sm" className="h-9">
+              Nuevo +
+              </Button>
+            </Link>
+          )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <form className="relative w-full sm:w-64">
