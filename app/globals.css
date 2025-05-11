@@ -200,7 +200,7 @@
 /* 6. Extra Styles    */
 /* ================== */
 .mask-gradient-b {
-  mask-image: linear-gradient(to bottom, black 85%, rgba(0, 0, 0, 0) 96%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 85%, rgba(0, 0, 0, 0) 96%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 86%, rgba(0, 0, 0, 0) 96%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 86%, rgba(0, 0, 0, 0) 96%, transparent 100%);
   transition: mask-image 0.4s ease-in-out; /* Transición suave de la máscara */
 }

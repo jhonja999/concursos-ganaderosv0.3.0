@@ -61,10 +61,12 @@ model User {
 // ---------------------------------------------------------
 model Company {
   id          String    @id @default(cuid())
-  nombre      String
-  descripcion String?
+  nombre      String  
   slug        String    @unique
-  logo        String?
+  logo        String?    
+  descripcion String?
+  ubicacion   String?
+  website     String?
   isFeatured  Boolean   @default(false) // Destacar la empresa
   isPublished Boolean   @default(false) // Indica si la empresa está publicada
   createdAt   DateTime  @default(now())

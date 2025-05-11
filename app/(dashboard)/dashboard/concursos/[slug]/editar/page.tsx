@@ -1,21 +1,24 @@
-import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { DashboardShell } from "@/components/dashboard/dashboard-shell"
-import { ConcursoForm } from "@/components/forms/concurso-form"
+import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 
-interface EditarConcursoPageProps {
+import { ConcursoForm } from "@/components/forms/concurso-form"
+
+interface ConcursoEditPageProps {
   params: {
     slug: string
   }
 }
 
-export default async function EditarConcursoPage({ params }: EditarConcursoPageProps) {
+export default async function ConcursoEditPage({ params }: ConcursoEditPageProps) {
   const { userId } = await auth()
 
   if (!userId) {
     redirect("/sign-in")
+  }
+
+  if (!params.slug) {
+    redirect("/dashboard/concursos")
   }
 
   const concurso = await prisma.concurso.findUnique({
@@ -28,7 +31,6 @@ export default async function EditarConcursoPage({ params }: EditarConcursoPageP
     redirect("/dashboard/concursos")
   }
 
-  // Obtener todas las compañías para el selector
   const companies = await prisma.company.findMany({
     select: {
       id: true,
@@ -40,10 +42,13 @@ export default async function EditarConcursoPage({ params }: EditarConcursoPageP
   })
 
   return (
-    <DashboardShell>
-      <DashboardHeader heading="Editar Concurso" text="Actualiza la información del concurso." />
-
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Editar Concurso</h3>
+        <p className="text-sm text-muted-foreground">Actualiza la información del concurso {concurso.nombre}</p>
+      </div>
       <ConcursoForm
+        companies={companies}
         initialData={{
           nombre: concurso.nombre,
           slug: concurso.slug,
@@ -55,8 +60,8 @@ export default async function EditarConcursoPage({ params }: EditarConcursoPageP
           isPublished: concurso.isPublished,
         }}
         concursoId={concurso.id}
-        companies={companies}
+        slug={concurso.slug}
       />
-    </DashboardShell>
+    </div>
   )
 }

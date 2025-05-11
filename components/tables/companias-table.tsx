@@ -100,19 +100,19 @@ export function CompaniasTable({ data }: CompaniasTableProps) {
               <TableCell className="font-medium">{company.nombre}</TableCell>
               <TableCell>
                 {company.isPublished ? (
-                  <Badge variant="default" className="text-black dark:text-black bg-green-500 hover:bg-green-400">
+                  <Badge variant="default" className="bg-green-500">
                     <Check className="mr-1 h-3 w-3" /> Publicada
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="flex items-center gap-1 text-black dark:text-black bg-orange-400 hover:bg-orange-300">
+                  <Badge variant="outline">
                     <X className="mr-1 h-3 w-3" /> Borrador
                   </Badge>
                 )}
               </TableCell>
               <TableCell>
                 {company.isFeatured ? (
-                  <Badge variant="secondary" className="text-black dark:text-black bg-cyan-600 hover:bg-cyan-400/80">
-                    <Check className="mr-1 h-3 w-3 " /> Destacada
+                  <Badge variant="secondary">
+                    <Check className="mr-1 h-3 w-3" /> Destacada
                   </Badge>
                 ) : (
                   <Badge variant="outline">No</Badge>
