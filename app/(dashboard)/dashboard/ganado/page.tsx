@@ -1,11 +1,13 @@
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { Button } from "@/components/ui/button"
+import { prisma } from "@/lib/prisma"
 import { GanadoOverviewHeader } from "@/components/ganado/ganado-overview-header"
 import { GanadoOverviewStats } from "@/components/ganado/ganado-overview-stats"
 import { GanadoOverviewTable } from "@/components/ganado/ganado-overview-table"
-import { prisma } from "@/lib/prisma"
 
 interface GanadoPageProps {
   searchParams: {
@@ -24,7 +26,7 @@ export default async function GanadoPage({ searchParams }: GanadoPageProps) {
   const { userId } = await auth()
 
   if (!userId) {
-    redirect("/sign-in")
+    redirect("/login")
   }
 
   // Parámetros de búsqueda y filtrado
@@ -39,9 +41,7 @@ export default async function GanadoPage({ searchParams }: GanadoPageProps) {
   const pageSize = 10
 
   // Construir la consulta para el ganado
-  let where: any = {
-    isPublished: true,
-  }
+  let where: any = {}
 
   if (search) {
     where = {
@@ -75,6 +75,7 @@ export default async function GanadoPage({ searchParams }: GanadoPageProps) {
     where.sexo = sexo
   }
 
+  // Modificación para manejar correctamente el filtrado por concurso
   if (concursoId) {
     where.ganadoEnConcurso = {
       some: {
@@ -108,6 +109,8 @@ export default async function GanadoPage({ searchParams }: GanadoPageProps) {
       ganadoEnConcurso: {
         include: {
           concurso: true,
+          // Remove or comment out the posicion field if it doesn't exist in your schema
+          // posicion: true,
         },
         orderBy: {
           concurso: {
@@ -115,6 +118,7 @@ export default async function GanadoPage({ searchParams }: GanadoPageProps) {
           },
         },
       },
+      categoriaConcurso: true,
     },
     skip: (page - 1) * pageSize,
     take: pageSize,
@@ -239,30 +243,36 @@ export default async function GanadoPage({ searchParams }: GanadoPageProps) {
 
   return (
     <DashboardShell>
-      <DashboardHeader heading="Gestión de Ganado" text="Administra todo el ganado registrado en el sistema." />
+      <DashboardHeader heading="Ganado" text="Gestiona tu ganado registrado.">
+        <Link href="/dashboard/ganado/nuevo">
+          <Button>Registrar Ganado</Button>
+        </Link>
+      </DashboardHeader>
 
-      <GanadoOverviewHeader
-        concursos={concursos}
-        razas={razas.map((r) => r.raza || "")}
-        establos={establos.map((e) => e.establo || "")}
-        searchParams={searchParams}
-      />
+      <div className="grid gap-4">
+        <GanadoOverviewStats
+          totalGanado={totalGanadoStats}
+          datosSexo={datosSexo}
+          datosRaza={datosRaza}
+          datosEstablo={datosEstablo}
+          datosConcursos={datosConcursos}
+        />
 
-      <GanadoOverviewStats
-        totalGanado={totalGanadoStats}
-        datosSexo={datosSexo}
-        datosRaza={datosRaza}
-        datosEstablo={datosEstablo}
-        datosConcursos={datosConcursos}
-      />
+        <GanadoOverviewHeader
+          concursos={concursos}
+          razas={razas.map((r) => r.raza || "")}
+          establos={establos.map((e) => e.establo || "")}
+          searchParams={searchParams}
+        />
 
-      <GanadoOverviewTable
-        data={ganado}
-        totalItems={totalGanado}
-        currentPage={page}
-        pageSize={pageSize}
-        searchParams={searchParams}
-      />
+        <GanadoOverviewTable
+          ganado={ganado}
+          totalItems={totalGanado}
+          currentPage={page}
+          pageSize={pageSize}
+          searchParams={searchParams}
+        />
+      </div>
     </DashboardShell>
   )
 }

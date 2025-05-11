@@ -7,10 +7,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateSlug(text: string): string {
+  if (!text) return ""
+
   return slugify(text, {
     lower: true,
     strict: true,
     locale: "es",
+    remove: /[*+~.()'"!:@]/g,
   })
 }
 

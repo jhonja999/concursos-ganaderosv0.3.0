@@ -198,13 +198,18 @@ model GanadoEnConcurso {
   concursoId String
   posicion   Int?
   creadoAt   DateTime @default(now())
+  
+  // Relaciones
+  ganado     Ganado   @relation(fields: [ganadoId], references: [id], onDelete: Cascade)
+  concurso   Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
+  
+  // Si quieres añadir la relación con categoría, deberías añadir esto:
+  // categoriaId String?
+  // categoria   ConcursoCategoria? @relation(fields: [categoriaId], references: [id])
 
-  ganado     Ganado   @relation(fields: [ganadoId], references: [id])
-  concurso   Concurso @relation(fields: [concursoId], references: [id])
-
-  @@unique([ganadoId, concursoId])
   @@index([ganadoId])
   @@index([concursoId])
+  // @@index([categoriaId]) // Si añades la relación con categoría
 }
 
 // ---------------------------------------------------------

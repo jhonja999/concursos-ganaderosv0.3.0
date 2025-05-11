@@ -5,7 +5,13 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { GanadoForm } from "@/components/forms/ganado-form"
 import { prisma } from "@/lib/prisma"
 
-export default async function NuevoGanadoPage() {
+interface NuevoGanadoPageProps {
+  searchParams: {
+    concursoId?: string
+  }
+}
+
+export default async function NuevoGanadoPage({ searchParams }: NuevoGanadoPageProps) {
   const { userId } = await auth()
 
   if (!userId) {
@@ -23,11 +29,14 @@ export default async function NuevoGanadoPage() {
     },
   })
 
+  // Obtener el concurso predeterminado de los parámetros de búsqueda
+  const defaultConcursoId = searchParams.concursoId
+
   return (
     <DashboardShell>
-      <DashboardHeader heading="Nuevo Ganado" text="Registra un nuevo ganado para los concursos." />
+      <DashboardHeader heading="Nuevo Ganado" text="Crea un nuevo registro de ganado." />
 
-      <GanadoForm concursos={concursos} />
+      <GanadoForm concursos={concursos} defaultConcursoId={defaultConcursoId} />
     </DashboardShell>
   )
 }

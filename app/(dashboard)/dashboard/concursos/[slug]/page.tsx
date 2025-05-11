@@ -57,24 +57,28 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
     take: 5, // Solo mostrar las primeras 5 categorías
   })
 
-  // Obtener el ganado del concurso
-  const ganado = await prisma.ganadoEnConcurso.findMany({
+  // Obtener el ganado del concurso con sus detalles
+  const ganadoEnConcurso = await prisma.ganadoEnConcurso.findMany({
     where: {
       concursoId: concurso.id,
     },
     include: {
       ganado: {
         include: {
+          criador: true,
+          categoriaConcurso: true,
           GanadoImage: {
             include: {
               image: true,
             },
-            where: {
-              principal: true,
-            },
             take: 1,
           },
         },
+      },
+    },
+    orderBy: {
+      ganado: {
+        nombre: "asc",
       },
     },
     take: 5, // Solo mostrar los primeros 5 ganados
@@ -226,9 +230,9 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
           </Link>
         </CardHeader>
         <CardContent>
-          {ganado.length > 0 ? (
+          {ganadoEnConcurso.length > 0 ? (
             <div className="space-y-4">
-              {ganado.map((participacion) => (
+              {ganadoEnConcurso.map((participacion) => (
                 <div key={participacion.id} className="flex items-center justify-between rounded-lg border p-3">
                   <div className="flex items-center gap-3">
                     <div className="relative h-10 w-10 overflow-hidden rounded-md">
@@ -247,6 +251,8 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
                       <p className="text-sm text-muted-foreground">
                         {participacion.ganado.raza || "Sin raza"} -{" "}
                         {participacion.ganado.sexo === "MACHO" ? "Macho" : "Hembra"}
+                        {participacion.ganado.categoriaConcurso &&
+                          ` - ${participacion.ganado.categoriaConcurso.nombre}`}
                       </p>
                     </div>
                   </div>
@@ -259,7 +265,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               ))}
               {concurso._count.ganadoEnConcurso > 5 && (
                 <div className="text-center">
-                  <Link href={`/dashboard/concursos/${params.slug}/ganado`}>
+                  <Link href={`/dashboard/ganado/${concurso.slug}/gestion`}>
                     <Button variant="link">Ver todo el ganado ({concurso._count.ganadoEnConcurso})</Button>
                   </Link>
                 </div>

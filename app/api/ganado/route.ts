@@ -11,6 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
+    console.log("Datos recibidos en API:", body)
 
     const {
       nombre,
@@ -70,10 +71,10 @@ export async function POST(req: Request) {
         raza,
         establo,
         propietario,
-        criadorId,
+        criadorId: criadorId || null,
         categoria,
         subcategoria,
-        categoriaConcursoId,
+        categoriaConcursoId: categoriaConcursoId || null,
         remate,
         puntaje,
         descripcion,
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
         data: {
           ganadoId: ganado.id,
           concursoId,
+          // Eliminamos categoriaId ya que no existe en el modelo
         },
       })
     }
@@ -95,7 +97,9 @@ export async function POST(req: Request) {
     return NextResponse.json(ganado)
   } catch (error) {
     console.error("[GANADO_POST]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    return new NextResponse(`Error interno: ${error instanceof Error ? error.message : "Error desconocido"}`, {
+      status: 500,
+    })
   }
 }
 
@@ -109,7 +113,7 @@ export async function GET(req: Request) {
     const isFeatured = searchParams.get("isFeatured")
     const isPublished = searchParams.get("isPublished")
 
-    let where = {}
+    let where: any = {}
 
     if (sexo) {
       where = {
@@ -167,9 +171,12 @@ export async function GET(req: Request) {
           include: {
             concurso: {
               select: {
+                id: true,
                 nombre: true,
+                slug: true,
               },
             },
+            // Eliminamos categoria ya que no existe en el modelo
           },
         },
         categoriaConcurso: true,
