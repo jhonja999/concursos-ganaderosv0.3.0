@@ -1,3 +1,4 @@
+// app/(dashboard)/dashboard/concursos/[slug]/categorias/page.tsx
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
@@ -16,45 +17,42 @@ interface CategoriasPageProps {
 
 export default async function CategoriasPage({ params }: CategoriasPageProps) {
   const { userId } = await auth()
-
-  if (!userId) {
-    redirect("/sign-in")
-  }
+  if (!userId) redirect("/sign-in")
 
   const concurso = await prisma.concurso.findUnique({
-    where: {
-      slug: params.slug,
-    },
+    where: { slug: params.slug },
   })
+  if (!concurso) redirect("/dashboard/concursos")
 
-  if (!concurso) {
-    redirect("/dashboard/concursos")
-  }
-
-  const categorias = await prisma.concursoCategoria.findMany({
-    where: {
-      concursoId: concurso.id,
-    },
+  // Fetch raw categories including the count of ganado
+  const rawCategorias = await prisma.concursoCategoria.findMany({
+    where: { concursoId: concurso.id },
     orderBy: [
-      {
-        orden: "asc",
-      },
-      {
-        nombre: "asc",
-      },
+      { orden: "asc" },
+      { nombre: "asc" },
     ],
-    include: {
-      _count: {
-        select: {
-          ganado: true,
-        },
-      },
-    },
+    include: { _count: { select: { ganado: true } } },
   })
+
+  // Normalize sexo: "SIN_RESTRICCION" -> null
+  const categorias = rawCategorias.map(cat => ({
+    id: cat.id,
+    nombre: cat.nombre,
+    descripcion: cat.descripcion,
+    orden: cat.orden,
+    sexo: cat.sexo === "SIN_RESTRICCION" ? null : cat.sexo,
+    edadMinima: cat.edadMinima,
+    edadMaxima: cat.edadMaxima,
+    concursoId: cat.concursoId,
+    _count: { ganado: cat._count.ganado },
+  }))
 
   return (
     <DashboardShell>
-      <DashboardHeader heading={`Categorías - ${concurso.nombre}`} text="Gestiona las categorías del concurso.">
+      <DashboardHeader
+        heading={`Categorías - ${concurso.nombre}`}
+        text="Gestiona las categorías del concurso."
+      >
         <div className="flex gap-2">
           <Link href={`/dashboard/concursos/${params.slug}`}>
             <Button variant="outline">Volver al concurso</Button>
@@ -68,7 +66,11 @@ export default async function CategoriasPage({ params }: CategoriasPageProps) {
         </div>
       </DashboardHeader>
 
-      <CategoriasTable data={categorias} concursoSlug={params.slug} concursoId={concurso.id} />
+      <CategoriasTable
+        data={categorias}
+        concursoSlug={params.slug}
+        concursoId={concurso.id}
+      />
     </DashboardShell>
   )
 }

@@ -15,6 +15,7 @@ datasource db {
 enum Sexo {
   MACHO
   HEMBRA
+  SIN_RESTRICCION
 }
 
 /// Estado de pedido (si usas parte e-commerce)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -39,15 +39,26 @@ export function CategoriaConcursoForm({ concursoId, concursoSlug, initialData }:
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
+    defaultValues: {
       nombre: "",
       descripcion: "",
       orden: 0,
       sexo: null,
       edadMinima: null,
       edadMaxima: null,
+      ...initialData // Mezclar valores iniciales de forma segura
     },
   })
+    // Resetear el formulario solo cuando initialData cambia
+    useEffect(() => {
+      if (initialData) {
+        form.reset({
+          ...form.getValues(),
+          ...initialData
+        })
+      }
+    }, [form, JSON.stringify(initialData)]) // Comparación por contenido
+  
 
   async function onSubmit(data: FormValues) {
     setIsLoading(true)
@@ -121,6 +132,8 @@ export function CategoriaConcursoForm({ concursoId, concursoSlug, initialData }:
       <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Añadir key al formulario para forzar reinicio */}
+            <div key={JSON.stringify(initialData)}></div>
             <FormField
               control={form.control}
               name="nombre"
@@ -182,7 +195,7 @@ export function CategoriaConcursoForm({ concursoId, concursoSlug, initialData }:
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value || undefined}
-                      value={field.value || undefined}
+                      value={field.value ?? undefined}
                     >
                       <FormControl>
                         <SelectTrigger>
