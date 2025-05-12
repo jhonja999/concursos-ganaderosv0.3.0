@@ -83,7 +83,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         <div className="mb-10 rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-xl font-semibold">Acerca de {company.nombre}</h2>
           <div className="prose max-w-none dark:prose-invert">
-            <p>{company.descripcion}</p>
+            <a>{company.descripcion}</a>
           </div>
         </div>
       )}

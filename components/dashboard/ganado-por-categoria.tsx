@@ -12,6 +12,19 @@ export function GanadoPorCategoria({
   concursoId, 
   concursoSlug 
 }: GanadoPorCategoriaProps) {
+  if (!categoria) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Categoría no disponible</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">No se encontró información para esta categoría.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -34,7 +47,9 @@ export function GanadoPorCategoria({
             ) : null}
           </div>
         </CardTitle>
-        {categoria.descripcion && <p className="text-sm text-muted-foreground">{categoria.descripcion}</p>}
+        {categoria.descripcion && (
+          <p className="text-sm text-muted-foreground">{categoria.descripcion}</p>
+        )}
       </CardHeader>
       <CardContent>
         {/* Sección de machos */}
@@ -96,8 +111,8 @@ interface GanadoCardProps {
 
 function GanadoCard({ ganado, concursoSlug }: GanadoCardProps) {
   // Obtener la imagen principal si existe
-  const imagenPrincipal = ganado.GanadoImage.find(img => img.principal)?.image.url;
-  
+  const imagenPrincipal = ganado.GanadoImage?.find(img => img.principal)?.image.url;
+
   return (
     <Card className="overflow-hidden">
       <div className="aspect-square relative bg-muted">
@@ -116,7 +131,7 @@ function GanadoCard({ ganado, concursoSlug }: GanadoCardProps) {
       <CardContent className="p-4">
         <h4 className="font-semibold truncate">{ganado.nombre}</h4>
         <p className="text-sm text-muted-foreground mb-2 truncate">
-          {ganado.establo || ganado.propietario || (ganado.criador ? ganado.criador.nombre : "")}
+          {ganado.establo || ganado.propietario || (ganado.criador?.nombre ?? "")}
         </p>
         <div className="flex flex-wrap gap-1 mb-3">
           {ganado.puntaje && (

@@ -47,8 +47,7 @@ export function GanadoPuntajeForm({ ganadoId, initialPuntaje, onSubmit, isLoadin
   const handleSubmit = async (values: PuntajeFormValues) => {
     try {
       await onSubmit(values.puntaje)
-      setIsDialogOpen(false)
-      form.reset({ puntaje: values.puntaje })
+      setIsDialogOpen(false)  // Cierra el dialogo solo después de que se haya enviado el formulario correctamente
     } catch (error) {
       console.error("Error:", error)
       toast.error("Error al actualizar el puntaje")
