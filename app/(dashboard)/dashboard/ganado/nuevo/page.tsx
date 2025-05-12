@@ -40,9 +40,7 @@ export default async function NuevoGanadoPage({ searchParams }: NuevoGanadoPageP
       <DashboardHeader heading="Nuevo Ganado" text="Crea un nuevo registro de ganado." />
       <GanadoForm
         concursos={concursos}
-        defaultConcursoId={defaultConcursoId}
-        categoriasConcurso={categoriasConcurso}
-      />
+        defaultConcursoId={defaultConcursoId} />
     </DashboardShell>
   )
 }
