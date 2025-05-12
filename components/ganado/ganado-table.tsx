@@ -29,7 +29,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Pagination,
   PaginationContent,
   PaginationItem,
   PaginationLink,
@@ -38,6 +37,15 @@ import {
 } from "@/components/ui/pagination"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { GanadoPosicionForm } from "@/components/ganado/ganado-posicion-form"
+
+interface ConcursoCategoria {
+  id: string
+  nombre: string
+  descripcion: string | null
+  sexo: "MACHO" | "HEMBRA" | null
+  edadMinima: number | null
+  edadMaxima: number | null
+}
 
 interface GanadoEnConcurso {
   id: string
@@ -57,6 +65,7 @@ interface GanadoEnConcurso {
     categoria: string | null
     subcategoria: string | null
     puntaje: number | null
+    categoriaConcursoId: string | null
     criador: {
       id: string
       nombre: string
@@ -80,6 +89,7 @@ interface GanadoTableProps {
   currentPage: number
   pageSize: number
   searchParams: Record<string, string | string[] | undefined>
+  categoriasConcurso?: ConcursoCategoria[]
 }
 
 export function GanadoTable({
@@ -90,6 +100,7 @@ export function GanadoTable({
   currentPage,
   pageSize,
   searchParams,
+  categoriasConcurso = [],
 }: GanadoTableProps) {
   const router = useRouter()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -148,6 +159,13 @@ export function GanadoTable({
     return `/dashboard/ganado/${concursoSlug}/gestion?${params.toString()}`
   }
 
+  // Función para obtener el nombre de la categoría
+  const getCategoriaName = (categoriaId: string | null) => {
+    if (!categoriaId) return "Sin categoría"
+    const categoria = categoriasConcurso.find((cat) => cat.id === categoriaId)
+    return categoria ? categoria.nombre : "Categoría desconocida"
+  }
+
   return (
     <>
       <div className="rounded-md border">
@@ -159,6 +177,7 @@ export function GanadoTable({
               <TableHead>Raza</TableHead>
               <TableHead>Establo</TableHead>
               <TableHead>Propietario</TableHead>
+              <TableHead>Categoría</TableHead>
               <TableHead className="text-center">Posición</TableHead>
               <TableHead className="text-center">Puntaje</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -167,7 +186,7 @@ export function GanadoTable({
           <TableBody>
             {data.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   No hay ganado registrado en este concurso
                 </TableCell>
               </TableRow>
@@ -208,6 +227,13 @@ export function GanadoTable({
                     ? `${item.ganado.criador.nombre} ${item.ganado.criador.apellido || ""}`
                     : item.ganado.propietario || "No especificado"}
                 </TableCell>
+                <TableCell>
+                  {item.ganado.categoriaConcursoId ? (
+                    <Badge variant="outline">{getCategoriaName(item.ganado.categoriaConcursoId)}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-center">
                   {item.posicion ? (
                     <Badge className="mx-auto">{item.posicion}º</Badge>
@@ -239,7 +265,7 @@ export function GanadoTable({
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/ganado/${item.ganado.id}/editar`}>
+                        <Link href={`/dashboard/ganado/editar/${item.ganado.slug}`}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Editar ganado
                         </Link>
@@ -269,7 +295,7 @@ export function GanadoTable({
       </div>
 
       {totalPages > 1 && (
-        <Pagination className="mt-4">
+        <div className="mt-4">
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
@@ -295,7 +321,7 @@ export function GanadoTable({
               />
             </PaginationItem>
           </PaginationContent>
-        </Pagination>
+        </div>
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

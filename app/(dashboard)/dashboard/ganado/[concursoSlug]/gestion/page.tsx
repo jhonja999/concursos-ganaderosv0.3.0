@@ -1,123 +1,48 @@
 import { auth } from "@clerk/nextjs/server"
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
-import { GanadoGestionHeader } from "@/components/ganado/ganado-gestion-header"
-import { GanadoStats } from "@/components/ganado/ganado-stats"
-import { GanadoTable } from "@/components/ganado/ganado-table"
+import { GanadoPorCategoria } from "@/components/dashboard/ganado-por-categoria"
 import { prisma } from "@/lib/prisma"
+import { Ganado, Sexo } from "@/types/ganado"
 
-interface GanadoGestionPageProps {
+interface GestionPageProps {
   params: {
     concursoSlug: string
   }
-  searchParams: {
-    search?: string
-    raza?: string
-    establo?: string
-    orderBy?: string
-    orderDir?: "asc" | "desc"
-    page?: string
-  }
 }
 
-export default async function GanadoGestionPage({ params, searchParams }: GanadoGestionPageProps) {
+export default async function GestionPage({ params }: GestionPageProps) {
   const { userId } = await auth()
-
   if (!userId) {
     redirect("/sign-in")
   }
 
+  const concursoSlug = params.concursoSlug
+  
   // Obtener el concurso por slug
   const concurso = await prisma.concurso.findUnique({
     where: {
-      slug: params.concursoSlug,
+      slug: concursoSlug,
     },
     include: {
-      company: true,
-    },
+      categorias: true, // Incluir las categorías del concurso
+    }
   })
 
   if (!concurso) {
-    redirect("/dashboard/concursos")
+    notFound()
   }
 
-  // Parámetros de búsqueda y filtrado
-  const search = searchParams.search || ""
-  const raza = searchParams.raza || ""
-  const establo = searchParams.establo || ""
-  const orderBy = searchParams.orderBy || "posicion"
-  const orderDir = searchParams.orderDir || "asc"
-  const page = Number.parseInt(searchParams.page || "1")
-  const pageSize = 10
-
-  // Construir la consulta para el ganado
-  let where: any = {
-    concursoId: concurso.id,
-}
-
-  if (search) {
-    where = {
-      ...where,
-      ganado: {
-        OR: [
-          {
-            nombre: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-          {
-            numRegistro: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-        ],
-      },
-    }
-  }
-
-  if (raza) {
-    where = {
-      ...where,
-      ganado: {
-        ...where.ganado,
-        raza,
-      },
-    }
-  }
-
-  if (establo) {
-    where = {
-      ...where,
-      ganado: {
-        ...where.ganado,
-        establo,
-      },
-    }
-  }
-
-  // Obtener el total de registros para la paginación
-  const totalGanado = await prisma.ganadoEnConcurso.count({
-    where,
-  })
-
-  // Obtener el ganado con paginación y ordenación
-  const ganado = await prisma.ganadoEnConcurso.findMany({
-    where,
-    orderBy: {
-      [orderBy === "nombre" || orderBy === "raza" || orderBy === "establo" || orderBy === "puntaje"
-        ? "ganado"
-        : orderBy]: {
-        [orderBy === "nombre" || orderBy === "raza" || orderBy === "establo" || orderBy === "puntaje"
-          ? orderBy
-          : "posicion"]: orderDir,
-      },
+  // Obtener todo el ganado en este concurso
+  const ganadoEnConcurso = await prisma.ganadoEnConcurso.findMany({
+    where: {
+      concursoId: concurso.id,
     },
     include: {
       ganado: {
         include: {
+          categoriaConcurso: true,
           GanadoImage: {
             include: {
               image: true,
@@ -127,130 +52,127 @@ export default async function GanadoGestionPage({ params, searchParams }: Ganado
             },
             take: 1,
           },
-          criador: true,
         },
       },
     },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
   })
 
-  // Obtener las razas y establos disponibles para los filtros
-  const razas = await prisma.ganado.findMany({
+  // Organizar el ganado por categoría y sexo
+  const ganadoPorCategoriaMap = new Map()
+  const ganadoSinCategoria: {
+    machos: Ganado[],
+    hembras: Ganado[],
+  } = {
+    machos: [],
+    hembras: [],
+  }
+
+  for (const item of ganadoEnConcurso) {
+    const ganado = item.ganado as unknown as Ganado
+    const categoria = ganado.categoriaConcurso
+
+    if (categoria) {
+      if (!ganadoPorCategoriaMap.has(categoria.id)) {
+        ganadoPorCategoriaMap.set(categoria.id, {
+          id: categoria.id,
+          nombre: categoria.nombre,
+          descripcion: categoria.descripcion,
+          machos: [],
+          hembras: [],
+        })
+      }
+
+      const categoriaData = ganadoPorCategoriaMap.get(categoria.id)
+      
+      if (ganado.sexo === "MACHO") {
+        categoriaData.machos.push(ganado)
+      } else {
+        categoriaData.hembras.push(ganado)
+      }
+    } else {
+      // Ganado sin categoría asignada
+      if (ganado.sexo === "MACHO") {
+        ganadoSinCategoria.machos.push(ganado)
+      } else {
+        ganadoSinCategoria.hembras.push(ganado)
+      }
+    }
+  }
+
+  // Convertir el mapa a un array
+  const ganadoPorCategoria = Array.from(ganadoPorCategoriaMap.values())
+
+  // Contar el total de ganado por sexo
+  const totalMachos = ganadoEnConcurso.filter(item => item.ganado.sexo === "MACHO").length
+  const totalHembras = ganadoEnConcurso.filter(item => item.ganado.sexo === "HEMBRA").length
+  const totalGeneral = ganadoEnConcurso.length
+
+  // Obtener las categorías disponibles para este concurso
+  const categoriasConcurso = await prisma.concursoCategoria.findMany({
     where: {
-      ganadoEnConcurso: {
-        some: {
-          concursoId: concurso.id,
-        },
-      },
-      raza: {
-        not: null,
-      },
+      concursoId: concurso.id,
     },
-    select: {
-      raza: true,
-    },
-    distinct: ["raza"],
-  })
-
-  const establos = await prisma.ganado.findMany({
-    where: {
-      ganadoEnConcurso: {
-        some: {
-          concursoId: concurso.id,
-        },
-      },
-      establo: {
-        not: null,
-      },
-    },
-    select: {
-      establo: true,
-    },
-    distinct: ["establo"],
-  })
-
-  // Obtener estadísticas para los gráficos
-  const estadisticasRaza = await prisma.ganado.groupBy({
-    by: ["raza"],
-    where: {
-      ganadoEnConcurso: {
-        some: {
-          concursoId: concurso.id,
-        },
-      },
-      raza: {
-        not: null,
-      },
-    },
-    _count: {
-      id: true,
+    orderBy: {
+      orden: 'asc',
     },
   })
-
-  const estadisticasEstablo = await prisma.ganado.groupBy({
-    by: ["establo"],
-    where: {
-      ganadoEnConcurso: {
-        some: {
-          concursoId: concurso.id,
-        },
-      },
-      establo: {
-        not: null,
-      },
-    },
-    _count: {
-      id: true,
-    },
-  })
-
-  // Calcular el total de ganado para las estadísticas
-  const totalGanadoStats = estadisticasRaza.reduce((acc, curr) => acc + curr._count.id, 0)
-
-  // Preparar datos para los gráficos
-  const datosRaza = estadisticasRaza.map((item) => ({
-    name: item.raza || "Sin raza",
-    value: item._count.id,
-    porcentaje: Math.round((item._count.id / totalGanadoStats) * 100),
-  }))
-
-  const datosEstablo = estadisticasEstablo.map((item) => ({
-    name: item.establo || "Sin establo",
-    value: item._count.id,
-    porcentaje: Math.round((item._count.id / totalGanadoStats) * 100),
-  }))
 
   return (
     <DashboardShell>
       <DashboardHeader
         heading={`Gestión de Ganado - ${concurso.nombre}`}
-        text="Administra el ganado participante en este concurso."
+        text="Administra el ganado inscrito en este concurso"
       />
-
-      <GanadoGestionHeader
-        concurso={concurso}
-        razas={razas.map((r) => r.raza || "")}
-        establos={establos.map((e) => e.establo || "")}
-        searchParams={searchParams}
-      />
-
-      <GanadoStats
-        totalGanado={totalGanadoStats}
-        datosRaza={datosRaza}
-        datosEstablo={datosEstablo}
-        concursoNombre={concurso.nombre}
-      />
-
-      <GanadoTable
-        data={ganado}
-        concursoSlug={params.concursoSlug}
-        concursoId={concurso.id}
-        totalItems={totalGanado}
-        currentPage={page}
-        pageSize={pageSize}
-        searchParams={searchParams}
-      />
+      
+      <div className="mb-8">
+        <div className="grid grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">Total Machos</h3>
+            <p className="text-2xl font-bold text-blue-600">{totalMachos}</p>
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">Total Hembras</h3>
+            <p className="text-2xl font-bold text-pink-600">{totalHembras}</p>
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">Total General</h3>
+            <p className="text-2xl font-bold text-green-600">{totalGeneral}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="space-y-8">
+        {/* Mostrar ganado por categoría */}
+        {categoriasConcurso.map((categoria) => {
+          const categoriaData = ganadoPorCategoriaMap.get(categoria.id) || { machos: [], hembras: [] }
+          
+          return (
+            <GanadoPorCategoria
+              key={categoria.id}
+              categoria={categoria}
+              machos={categoriaData.machos || []}
+              hembras={categoriaData.hembras || []}
+              concursoId={concurso.id}
+              concursoSlug={concursoSlug}
+            />
+          )
+        })}
+        
+        {/* Mostrar ganado sin categoría asignada */}
+        {(ganadoSinCategoria.machos.length > 0 || ganadoSinCategoria.hembras.length > 0) && (
+          <GanadoPorCategoria
+            categoria={{ 
+              id: "sin-categoria", 
+              nombre: "Sin Categoría Asignada", 
+              descripcion: "Ganado que no tiene categoría asignada" 
+            }}
+            machos={ganadoSinCategoria.machos}
+            hembras={ganadoSinCategoria.hembras}
+            concursoId={concurso.id}
+            concursoSlug={concursoSlug}
+          />
+        )}
+      </div>
     </DashboardShell>
   )
 }

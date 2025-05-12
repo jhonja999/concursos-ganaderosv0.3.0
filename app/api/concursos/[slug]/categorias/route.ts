@@ -2,26 +2,12 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 
-export async function POST(req: Request, { params }: { params: { slug: string } }) {
+export async function GET(request: Request, { params }: { params: { slug: string } }) {
   try {
-    const { userId } = await auth()
+    // Nota: Removemos la verificación de auth para permitir acceso público a las categorías
+    // Esto es útil para la carga de categorías en el formulario de ganado
 
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    const body = await req.json()
-    const { nombre, descripcion, orden, sexo, edadMinima, edadMaxima } = body
-
-    if (!params.slug) {
-      return new NextResponse("Slug is required", { status: 400 })
-    }
-
-    if (!nombre) {
-      return new NextResponse("Nombre es requerido", { status: 400 })
-    }
-
-    // Verificar que el concurso existe
+    // Primero obtenemos el concurso por su slug
     const concurso = await prisma.concurso.findUnique({
       where: {
         slug: params.slug,
@@ -32,6 +18,51 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       return new NextResponse("Concurso no encontrado", { status: 404 })
     }
 
+    // Luego obtenemos las categorías de ese concurso
+    const categorias = await prisma.concursoCategoria.findMany({
+      where: {
+        concursoId: concurso.id,
+      },
+      orderBy: {
+        orden: "asc",
+      },
+    })
+
+    return NextResponse.json(categorias)
+  } catch (error) {
+    console.error("[CATEGORIAS_GET]", error)
+    return new NextResponse("Internal error", { status: 500 })
+  }
+}
+
+export async function POST(request: Request, { params }: { params: { slug: string } }) {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const body = await request.json()
+
+    const { nombre, descripcion, orden, sexo, edadMinima, edadMaxima } = body
+
+    if (!nombre) {
+      return new NextResponse("Nombre es requerido", { status: 400 })
+    }
+
+    // Primero obtenemos el concurso por su slug
+    const concurso = await prisma.concurso.findUnique({
+      where: {
+        slug: params.slug,
+      },
+    })
+
+    if (!concurso) {
+      return new NextResponse("Concurso no encontrado", { status: 404 })
+    }
+
+    // Crear la categoría
     const categoria = await prisma.concursoCategoria.create({
       data: {
         nombre,
@@ -46,52 +77,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
 
     return NextResponse.json(categoria)
   } catch (error) {
-    console.error("[CATEGORIAS_CONCURSO_POST]", error)
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-
-export async function GET(req: Request, { params }: { params: { slug: string } }) {
-  try {
-    if (!params.slug) {
-      return new NextResponse("Slug is required", { status: 400 })
-    }
-
-    // Verificar que el concurso existe
-    const concurso = await prisma.concurso.findUnique({
-      where: {
-        slug: params.slug,
-      },
-    })
-
-    if (!concurso) {
-      return new NextResponse("Concurso no encontrado", { status: 404 })
-    }
-
-    const categorias = await prisma.concursoCategoria.findMany({
-      where: {
-        concursoId: concurso.id,
-      },
-      orderBy: [
-        {
-          orden: "asc",
-        },
-        {
-          nombre: "asc",
-        },
-      ],
-      include: {
-        _count: {
-          select: {
-            ganado: true,
-          },
-        },
-      },
-    })
-
-    return NextResponse.json(categorias)
-  } catch (error) {
-    console.error("[CATEGORIAS_CONCURSO_GET]", error)
+    console.error("[CATEGORIAS_POST]", error)
     return new NextResponse("Internal error", { status: 500 })
   }
 }

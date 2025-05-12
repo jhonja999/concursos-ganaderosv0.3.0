@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { generateSlug } from "@/lib/utils"
+import { GanadoFormData } from "@/types/ganado"
 
 // Define the form schema with explicit types
 const formSchema = z.object({
@@ -87,13 +88,24 @@ interface GanadoFormProps {
   concursos: {
     id: string
     nombre: string
+    slug?: string
   }[]
-  initialData?: Partial<FormValues>
+  initialData?: Partial<GanadoFormData>
   ganadoId?: string
   defaultConcursoId?: string
+  categoriasConcursoPreCargadas?: ConcursoCategoria[] // <- Agregada aquí
+  categoriasConcurso: ConcursoCategoria[] // <- esta línea es obligatoria
 }
 
-export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId }: GanadoFormProps) {
+
+
+export function GanadoForm({
+  concursos,
+  initialData,
+  ganadoId,
+  defaultConcursoId,
+  categoriasConcursoPreCargadas = [],
+}: GanadoFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [razas, setRazas] = useState<string[]>([])
@@ -109,7 +121,7 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
     "Toros",
   ])
 
-  const [categoriasConcurso, setCategoriasConcurso] = useState<ConcursoCategoria[]>([])
+  const [categoriasConcurso, setCategoriasConcurso] = useState<ConcursoCategoria[]>(categoriasConcursoPreCargadas)
   const [openRaza, setOpenRaza] = useState(false)
   const [openEstablo, setOpenEstablo] = useState(false)
   const [openPropietario, setOpenPropietario] = useState(false)
@@ -120,6 +132,8 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
   const [isNewCriadorDialogOpen, setIsNewCriadorDialogOpen] = useState(false)
   const [criadorCreado, setCriadorCreado] = useState<{ id: string; nombre: string; empresa?: string } | null>(null)
   const [criadorFormSubmitting, setCriadorFormSubmitting] = useState(false)
+  const [isLoadingCategorias, setIsLoadingCategorias] = useState(false)
+  const [concursoSlugs, setConcursoSlugs] = useState<Record<string, string>>({})
 
   // Preparar valores iniciales, asegurando que todos los campos tengan valores válidos
   const defaultValues: FormValues = {
@@ -179,6 +193,17 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
     },
   })
 
+  // Inicializar el mapa de slugs de concursos
+  useEffect(() => {
+    const slugMap: Record<string, string> = {}
+    concursos.forEach((concurso) => {
+      if (concurso.slug) {
+        slugMap[concurso.id] = concurso.slug
+      }
+    })
+    setConcursoSlugs(slugMap)
+  }, [concursos])
+
   // Cargar datos iniciales
   useEffect(() => {
     async function fetchData() {
@@ -208,26 +233,86 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
 
   // Cargar categorías específicas del concurso cuando se selecciona un concurso
   const watchConcursoId = form.watch("concursoId")
+  const watchSexo = form.watch("sexo")
+  const watchDiasNacida = form.watch("diasNacida")
+
   useEffect(() => {
+    // Si ya tenemos categorías precargadas y coinciden con el concurso seleccionado, no hacemos nada
+    if (categoriasConcursoPreCargadas.length > 0 && initialData?.concursoId === watchConcursoId) {
+      return
+    }
+
     async function fetchCategoriasConcurso() {
       if (!watchConcursoId || watchConcursoId === "ninguno") {
         setCategoriasConcurso([])
         return
       }
 
+      setIsLoadingCategorias(true)
       try {
-        const response = await fetch(`/api/concursos/${watchConcursoId}/categorias`)
-        if (response.ok) {
-          const data = await response.json()
-          setCategoriasConcurso(data)
+        // Intentamos obtener el slug del concurso
+        let slug = concursoSlugs[watchConcursoId]
+
+        // Si no tenemos el slug en el mapa, intentamos obtenerlo
+        if (!slug) {
+          try {
+            const concursoResponse = await fetch(`/api/concursos/${watchConcursoId}`)
+            if (concursoResponse.ok) {
+              const concursoData = await concursoResponse.json()
+              slug = concursoData.slug
+              // Actualizar el mapa de slugs
+              setConcursoSlugs((prev) => ({ ...prev, [watchConcursoId]: slug }))
+            }
+          } catch (error) {
+            console.error("Error al obtener slug del concurso:", error)
+          }
+        }
+
+        // Si tenemos el slug, intentamos obtener las categorías por slug
+        if (slug) {
+          try {
+            console.log(`Intentando obtener categorías por slug: /api/concursos/${slug}/categorias`)
+            const response = await fetch(`/api/concursos/${slug}/categorias`)
+            if (response.ok) {
+              const data = await response.json()
+              console.log("Categorías cargadas por slug:", data)
+              setCategoriasConcurso(data)
+              setIsLoadingCategorias(false)
+              return
+            } else {
+              console.error("Error al cargar categorías por slug:", response.statusText)
+            }
+          } catch (error) {
+            console.error("Error al cargar categorías por slug:", error)
+          }
+        }
+
+        // Si no pudimos obtener por slug o falló, intentamos por ID
+        try {
+          console.log(`Intentando obtener categorías por ID: /api/concursos/${watchConcursoId}/categorias`)
+          const response = await fetch(`/api/concursos/${watchConcursoId}/categorias`)
+          if (response.ok) {
+            const data = await response.json()
+            console.log("Categorías cargadas por ID:", data)
+            setCategoriasConcurso(data)
+          } else {
+            console.error("Error al cargar categorías por ID:", response.statusText)
+            toast.error(`Error al cargar categorías: ${response.statusText}`)
+          }
+        } catch (error) {
+          console.error("Error al cargar categorías por ID:", error)
+          toast.error(`Error al cargar categorías: ${error instanceof Error ? error.message : String(error)}`)
         }
       } catch (error) {
-        console.error("Error al cargar categorías del concurso:", error)
+        console.error("Error general al cargar categorías:", error)
+        toast.error(`Error al cargar categorías: ${error instanceof Error ? error.message : String(error)}`)
+      } finally {
+        setIsLoadingCategorias(false)
       }
     }
 
     fetchCategoriasConcurso()
-  }, [watchConcursoId])
+  }, [watchConcursoId, concursoSlugs, categoriasConcursoPreCargadas, initialData?.concursoId])
 
   // Generar slug automáticamente al cambiar el nombre
   const watchNombre = form.watch("nombre")
@@ -247,16 +332,38 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
     }
   }, [watchFechaNac, form])
 
+  // Filtrar categorías por sexo y edad
+  useEffect(() => {
+    // Este efecto se ejecuta cuando cambia el sexo o los días de nacimiento
+    // para actualizar la categoría seleccionada si ya no es compatible
+    const categoriaConcursoId = form.getValues("categoriaConcursoId")
+    if (categoriaConcursoId && categoriaConcursoId !== "none" && categoriaConcursoId !== "no-categories") {
+      const categoriaActual = categoriasConcurso.find((cat) => cat.id === categoriaConcursoId)
+      if (categoriaActual) {
+        // Verificar si la categoría sigue siendo compatible con el sexo y edad actuales
+        const esCompatibleSexo = categoriaActual.sexo === null || categoriaActual.sexo === watchSexo
+        const esCompatibleEdad =
+          (categoriaActual.edadMinima === null ||
+            (watchDiasNacida !== undefined && watchDiasNacida >= categoriaActual.edadMinima)) &&
+          (categoriaActual.edadMaxima === null ||
+            (watchDiasNacida !== undefined && watchDiasNacida <= categoriaActual.edadMaxima))
+
+        if (!esCompatibleSexo || !esCompatibleEdad) {
+          // Si ya no es compatible, resetear la selección
+          form.setValue("categoriaConcursoId", "")
+        }
+      }
+    }
+  }, [watchSexo, watchDiasNacida, categoriasConcurso, form])
+
   // Filtrar categorías por sexo
-  const watchSexo = form.watch("sexo")
   const categoriasFiltradas = categoriasConcurso.filter((cat) => cat.sexo === null || cat.sexo === watchSexo)
 
   // Filtrar categorías por edad
-  const diasNacida = form.watch("diasNacida")
   const categoriasFiltradas2 = categoriasFiltradas.filter(
     (cat) =>
-      (cat.edadMinima === null || (diasNacida !== undefined && diasNacida >= cat.edadMinima)) &&
-      (cat.edadMaxima === null || (diasNacida !== undefined && diasNacida <= cat.edadMaxima)),
+      (cat.edadMinima === null || (watchDiasNacida !== undefined && watchDiasNacida >= cat.edadMinima)) &&
+      (cat.edadMaxima === null || (watchDiasNacida !== undefined && watchDiasNacida <= cat.edadMaxima)),
   )
 
   // Efecto para seleccionar el criador recién creado
@@ -316,17 +423,23 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
       // Redirigir a la página de ganado o a la página del concurso si se especificó uno
       if (data.concursoId && data.concursoId !== "ninguno") {
         // Obtener el slug del concurso
-        const concurso = concursos.find((c) => c.id === data.concursoId)
-        if (concurso) {
-          const concursoResponse = await fetch(`/api/concursos/${data.concursoId}`)
-          if (concursoResponse.ok) {
-            const concursoData = await concursoResponse.json()
-            router.push(`/dashboard/concursos/${concursoData.slug}`)
-          } else {
+        const slug = concursoSlugs[data.concursoId]
+        if (slug) {
+          router.push(`/dashboard/concursos/${slug}`)
+        } else {
+          // Intentar obtener el slug del concurso
+          try {
+            const concursoResponse = await fetch(`/api/concursos/${data.concursoId}`)
+            if (concursoResponse.ok) {
+              const concursoData = await concursoResponse.json()
+              router.push(`/dashboard/concursos/${concursoData.slug}`)
+            } else {
+              router.push("/dashboard/ganado")
+            }
+          } catch (error) {
+            console.error("Error al obtener slug del concurso:", error)
             router.push("/dashboard/ganado")
           }
-        } else {
-          router.push("/dashboard/ganado")
         }
       } else {
         router.push("/dashboard/ganado")
@@ -957,12 +1070,18 @@ export function GanadoForm({ concursos, initialData, ganadoId, defaultConcursoId
                     <Select onValueChange={field.onChange} value={field.value || "none"}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar categoría del concurso" />
+                          <SelectValue placeholder="Seleccionar categoría del concurso">
+                            {isLoadingCategorias ? "Cargando categorías..." : "Seleccionar categoría del concurso"}
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Sin categoría</SelectItem>
-                        {categoriasFiltradas2.length > 0 ? (
+                        {isLoadingCategorias ? (
+                          <SelectItem value="loading" disabled>
+                            Cargando categorías...
+                          </SelectItem>
+                        ) : categoriasFiltradas2.length > 0 ? (
                           categoriasFiltradas2.map((cat) => (
                             <SelectItem key={cat.id} value={cat.id}>
                               {cat.nombre}

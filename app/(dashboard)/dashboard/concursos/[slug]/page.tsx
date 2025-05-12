@@ -22,9 +22,12 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
     redirect("/sign-in")
   }
 
+  // Extraer el slug al inicio para evitar accesos asíncronos en JSX
+  const concursoSlug = params.slug
+
   const concurso = await prisma.concurso.findUnique({
     where: {
-      slug: params.slug,
+      slug: concursoSlug,
     },
     include: {
       company: true,
@@ -91,7 +94,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
           <Link href="/dashboard/concursos">
             <Button variant="outline">Volver a concursos</Button>
           </Link>
-          <Link href={`/dashboard/concursos/${params.slug}/editar`}>
+          <Link href={`/dashboard/concursos/${concursoSlug}/editar`}>
             <Button variant="outline">Editar concurso</Button>
           </Link>
         </div>
@@ -165,7 +168,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
             <CardTitle>Categorías</CardTitle>
             <CardDescription>Categorías definidas para este concurso</CardDescription>
           </div>
-          <Link href={`/dashboard/concursos/${params.slug}/categorias`}>
+          <Link href={`/dashboard/concursos/${concursoSlug}/categorias`}>
             <Button>
               <Tag className="mr-2 h-4 w-4" />
               Gestionar Categorías
@@ -183,7 +186,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
                       <p className="text-sm text-muted-foreground line-clamp-1">{categoria.descripcion}</p>
                     )}
                   </div>
-                  <Link href={`/dashboard/concursos/${params.slug}/categorias/${categoria.id}`}>
+                  <Link href={`/dashboard/concursos/${concursoSlug}/categorias/${categoria.id}`}>
                     <Button variant="outline" size="sm">
                       Editar
                     </Button>
@@ -192,7 +195,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               ))}
               {concurso._count.categorias > 5 && (
                 <div className="text-center">
-                  <Link href={`/dashboard/concursos/${params.slug}/categorias`}>
+                  <Link href={`/dashboard/concursos/${concursoSlug}/categorias`}>
                     <Button variant="link">Ver todas las categorías ({concurso._count.categorias})</Button>
                   </Link>
                 </div>
@@ -205,7 +208,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               <p className="mb-4 text-sm text-muted-foreground">
                 Este concurso no tiene categorías definidas. Añade categorías para organizar el ganado.
               </p>
-              <Link href={`/dashboard/concursos/${params.slug}/categorias/nueva`}>
+              <Link href={`/dashboard/concursos/${concursoSlug}/categorias/nueva`}>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
                   Añadir Categoría
@@ -265,7 +268,7 @@ export default async function ConcursoPage({ params }: ConcursoPageProps) {
               ))}
               {concurso._count.ganadoEnConcurso > 5 && (
                 <div className="text-center">
-                  <Link href={`/dashboard/ganado/${concurso.slug}/gestion`}>
+                  <Link href={`/dashboard/ganado/${concursoSlug}/gestion`}>
                     <Button variant="link">Ver todo el ganado ({concurso._count.ganadoEnConcurso})</Button>
                   </Link>
                 </div>

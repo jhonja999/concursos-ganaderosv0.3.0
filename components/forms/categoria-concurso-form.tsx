@@ -1,32 +1,18 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { toast } from "sonner";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent } from "@/components/ui/card"
 
 const formSchema = z.object({
   nombre: z.string().min(2, {
@@ -37,23 +23,19 @@ const formSchema = z.object({
   sexo: z.enum(["MACHO", "HEMBRA", "SIN_RESTRICCION"]).optional().nullable(),
   edadMinima: z.coerce.number().int().min(0).optional().nullable(),
   edadMaxima: z.coerce.number().int().min(0).optional().nullable(),
-});
+})
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>
 
 interface CategoriaConcursoFormProps {
-  concursoId: string;
-  concursoSlug: string;
-  initialData?: FormValues & { id: string };
+  concursoId: string
+  concursoSlug: string
+  initialData?: FormValues & { id: string }
 }
 
-export function CategoriaConcursoForm({
-  concursoId,
-  concursoSlug,
-  initialData,
-}: CategoriaConcursoFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+export function CategoriaConcursoForm({ concursoId, concursoSlug, initialData }: CategoriaConcursoFormProps) {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -65,21 +47,27 @@ export function CategoriaConcursoForm({
       edadMinima: null,
       edadMaxima: null,
     },
-  });
+  })
 
   async function onSubmit(data: FormValues) {
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
       console.log("Enviando datos:", data) // Añadir para depuración
 
-      const url = initialData
-        ? `/api/concursos/categorias/${initialData.id}`
-        : `/api/concursos/${concursoSlug}/categorias`;
+      let url: string
+      let method: string
 
-        console.log("URL de la API:", url) // Añadir para depuración
+      if (initialData) {
+        url = `/api/concursos/categorias/${initialData.id}`
+        method = "PATCH"
+      } else {
+        // Intentamos primero con el slug
+        url = `/api/concursos/${concursoSlug}/categorias`
+        method = "POST"
+      }
 
-      const method = initialData ? "PATCH" : "POST";
+      console.log("URL de la API:", url) // Añadir para depuración
 
       const response = await fetch(url, {
         method,
@@ -87,27 +75,44 @@ export function CategoriaConcursoForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      });
+      })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Error de respuesta:", response.status, errorText)
-        throw new Error(`Error al ${initialData ? "actualizar" : "crear"} la categoría: ${errorText}`)
+        // Si falla con el slug, intentamos con el ID
+        if (!initialData && response.status === 404) {
+          url = `/api/concursos/${concursoId}/categorias`
+          console.log("Intentando URL alternativa:", url)
+
+          const secondResponse = await fetch(url, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          })
+
+          if (!secondResponse.ok) {
+            const errorText = await secondResponse.text()
+            console.error("Error en segunda respuesta:", secondResponse.status, errorText)
+            throw new Error(`Error al ${initialData ? "actualizar" : "crear"} la categoría: ${errorText}`)
+          }
+        } else {
+          const errorText = await response.text()
+          console.error("Error de respuesta:", response.status, errorText)
+          throw new Error(`Error al ${initialData ? "actualizar" : "crear"} la categoría: ${errorText}`)
+        }
       }
 
-      toast.success(
-        `Categoría ${initialData ? "actualizada" : "creada"} correctamente`
-      );
-      router.push(`/dashboard/concursos/${concursoSlug}/categorias`);
-      router.refresh();
+      toast.success(`Categoría ${initialData ? "actualizada" : "creada"} correctamente`)
+      router.push(`/dashboard/concursos/${concursoSlug}/categorias`)
+      router.refresh()
     } catch (error) {
-
       console.error("Error completo:", error)
       toast.error(
         error instanceof Error ? error.message : `Error al ${initialData ? "actualizar" : "crear"} la categoría`,
-      );
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
@@ -125,9 +130,7 @@ export function CategoriaConcursoForm({
                   <FormControl>
                     <Input placeholder="Nombre de la categoría" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Nombre de la categoría (ej. "Terneras", "Vacas Adultas")
-                  </FormDescription>
+                  <FormDescription>Nombre de la categoría (ej. "Terneras", "Vacas Adultas")</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -140,15 +143,9 @@ export function CategoriaConcursoForm({
                 <FormItem>
                   <FormLabel>Descripción</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Descripción de la categoría"
-                      className="min-h-20"
-                      {...field}
-                    />
+                    <Textarea placeholder="Descripción de la categoría" className="min-h-20" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Descripción detallada de la categoría (opcional)
-                  </FormDescription>
+                  <FormDescription>Descripción detallada de la categoría (opcional)</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -167,9 +164,7 @@ export function CategoriaConcursoForm({
                         min={0}
                         placeholder="0"
                         {...field}
-                        onChange={(e) =>
-                          field.onChange(Number.parseInt(e.target.value) || 0)
-                        }
+                        onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormDescription>Orden de visualización</FormDescription>
@@ -195,16 +190,12 @@ export function CategoriaConcursoForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="SIN_RESTRICCION">
-                          Sin restricción
-                        </SelectItem>
+                        <SelectItem value="SIN_RESTRICCION">Sin restricción</SelectItem>
                         <SelectItem value="MACHO">Macho</SelectItem>
                         <SelectItem value="HEMBRA">Hembra</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Restricción de sexo para esta categoría (opcional)
-                    </FormDescription>
+                    <FormDescription>Restricción de sexo para esta categoría (opcional)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -226,17 +217,12 @@ export function CategoriaConcursoForm({
                         {...field}
                         value={field.value === null ? "" : field.value}
                         onChange={(e) => {
-                          const value =
-                            e.target.value === ""
-                              ? null
-                              : Number.parseInt(e.target.value);
-                          field.onChange(value);
+                          const value = e.target.value === "" ? null : Number.parseInt(e.target.value)
+                          field.onChange(value)
                         }}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Edad mínima en días (opcional)
-                    </FormDescription>
+                    <FormDescription>Edad mínima en días (opcional)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -256,17 +242,12 @@ export function CategoriaConcursoForm({
                         {...field}
                         value={field.value === null ? "" : field.value}
                         onChange={(e) => {
-                          const value =
-                            e.target.value === ""
-                              ? null
-                              : Number.parseInt(e.target.value);
-                          field.onChange(value);
+                          const value = e.target.value === "" ? null : Number.parseInt(e.target.value)
+                          field.onChange(value)
                         }}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Edad máxima en días (opcional)
-                    </FormDescription>
+                    <FormDescription>Edad máxima en días (opcional)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -279,12 +260,12 @@ export function CategoriaConcursoForm({
                   ? "Actualizando..."
                   : "Creando..."
                 : initialData
-                ? "Actualizar categoría"
-                : "Crear categoría"}
+                  ? "Actualizar categoría"
+                  : "Crear categoría"}
             </Button>
           </form>
         </Form>
       </CardContent>
     </Card>
-  );
+  )
 }

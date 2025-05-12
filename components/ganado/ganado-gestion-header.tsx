@@ -1,32 +1,26 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import type React from "react"
+
+import { useState } from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, ArrowUpDown, Download, Printer } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Plus, Search, SlidersHorizontal, X } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+interface ConcursoCategoria {
+  id: string
+  nombre: string
+  descripcion: string | null
+  sexo: "MACHO" | "HEMBRA" | null
+  edadMinima: number | null
+  edadMaxima: number | null
+}
 
 interface GanadoGestionHeaderProps {
   concurso: {
@@ -41,260 +35,176 @@ interface GanadoGestionHeaderProps {
     raza?: string
     establo?: string
     orderBy?: string
-    orderDir?: string
+    orderDir?: "asc" | "desc"
+    page?: string
   }
+  categoriasConcurso?: ConcursoCategoria[]
 }
 
-export function GanadoGestionHeader({ concurso, razas, establos, searchParams }: GanadoGestionHeaderProps) {
+export function GanadoGestionHeader({
+  concurso,
+  razas,
+  establos,
+  searchParams,
+  categoriasConcurso = [],
+}: GanadoGestionHeaderProps) {
   const router = useRouter()
-  const params = useSearchParams()
-
   const [search, setSearch] = useState(searchParams.search || "")
-  const [raza, setRaza] = useState(searchParams.raza || "")
-  const [establo, setEstablo] = useState(searchParams.establo || "")
-  const [orderBy, setOrderBy] = useState(searchParams.orderBy || "posicion")
-  const [orderDir, setOrderDir] = useState(searchParams.orderDir || "asc")
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
-  // Actualizar la URL cuando cambien los filtros
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const newParams = new URLSearchParams()
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const params = new URLSearchParams(searchParams as Record<string, string>)
 
-      if (search) newParams.set("search", search)
-      if (raza) newParams.set("raza", raza)
-      if (establo) newParams.set("establo", establo)
-      if (orderBy !== "posicion") newParams.set("orderBy", orderBy)
-      if (orderDir !== "asc") newParams.set("orderDir", orderDir)
+    if (search) {
+      params.set("search", search)
+    } else {
+      params.delete("search")
+    }
 
-      const page = params.get("page")
-      if (page && page !== "1") newParams.set("page", page)
-
-      router.push(`/dashboard/ganado/${concurso.slug}/gestion?${newParams.toString()}`)
-    }, 500)
-
-    return () => clearTimeout(timeout)
-  }, [search, raza, establo, orderBy, orderDir, router, concurso.slug, params])
-
-  const handleClearFilters = () => {
-    setSearch("")
-    setRaza("")
-    setEstablo("")
-    setOrderBy("posicion")
-    setOrderDir("asc")
-    router.push(`/dashboard/ganado/${concurso.slug}/gestion`)
+    params.set("page", "1") // Reset to first page on new search
+    router.push(`/dashboard/ganado/${concurso.slug}/gestion?${params.toString()}`)
   }
 
-  const handleExportCSV = () => {
-    // Implementación de exportación a CSV
-    alert("Exportación a CSV no implementada")
+  const handleFilterChange = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams as Record<string, string>)
+
+    if (value) {
+      params.set(key, value)
+    } else {
+      params.delete(key)
+    }
+
+    params.set("page", "1") // Reset to first page on filter change
+    router.push(`/dashboard/ganado/${concurso.slug}/gestion?${params.toString()}`)
   }
 
-  const handlePrint = () => {
-    window.print()
+  const clearFilters = () => {
+    const params = new URLSearchParams()
+    if (searchParams.search) {
+      params.set("search", searchParams.search)
+    }
+    router.push(`/dashboard/ganado/${concurso.slug}/gestion?${params.toString()}`)
   }
+
+  const hasActiveFilters = searchParams.raza || searchParams.establo
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar ganado..."
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <div className="flex flex-col space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por nombre o número de registro..."
+              className="pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Button type="submit">Buscar</Button>
+        </form>
+        <div className="flex gap-2">
+          <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="flex gap-2">
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">Filtros</span>
+                {hasActiveFilters && <Badge className="ml-1">{countActiveFilters()}</Badge>}
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+                <SheetDescription>Filtra el ganado por diferentes criterios.</SheetDescription>
+              </SheetHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <Label>Raza</Label>
+                  <Select value={searchParams.raza || ""} onValueChange={(value) => handleFilterChange("raza", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas las razas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todas las razas</SelectItem>
+                      {razas.map((raza) => (
+                        <SelectItem key={raza} value={raza}>
+                          {raza}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Establo</Label>
+                  <Select
+                    value={searchParams.establo || ""}
+                    onValueChange={(value) => handleFilterChange("establo", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los establos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos los establos</SelectItem>
+                      {establos.map((establo) => (
+                        <SelectItem key={establo} value={establo}>
+                          {establo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {hasActiveFilters && (
+                  <Button variant="outline" className="w-full mt-4" onClick={clearFilters}>
+                    <X className="mr-2 h-4 w-4" />
+                    Limpiar filtros
+                  </Button>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Link href={`/dashboard/ganado/nuevo?concursoId=${concurso.id}`}>
+            <Button className="flex gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Añadir Ganado</span>
+            </Button>
+          </Link>
         </div>
+      </div>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtros
-              {(raza || establo) && <span className="ml-1 rounded-full bg-primary w-2 h-2" />}
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>Filtros</SheetTitle>
-              <SheetDescription>Filtra el ganado por diferentes criterios</SheetDescription>
-            </SheetHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="raza">Raza</Label>
-                <Select value={raza} onValueChange={setRaza}>
-                  <SelectTrigger id="raza">
-                    <SelectValue placeholder="Todas las razas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las razas</SelectItem>
-                    {razas.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="establo">Establo</Label>
-                <Select value={establo} onValueChange={setEstablo}>
-                  <SelectTrigger id="establo">
-                    <SelectValue placeholder="Todos los establos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los establos</SelectItem>
-                    {establos.map((e) => (
-                      <SelectItem key={e} value={e}>
-                        {e}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="orderBy">Ordenar por</Label>
-                <Select value={orderBy} onValueChange={setOrderBy}>
-                  <SelectTrigger id="orderBy">
-                    <SelectValue placeholder="Ordenar por" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="posicion">Posición</SelectItem>
-                    <SelectItem value="nombre">Nombre</SelectItem>
-                    <SelectItem value="raza">Raza</SelectItem>
-                    <SelectItem value="establo">Establo</SelectItem>
-                    <SelectItem value="puntaje">Puntaje</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="orderDir">Dirección</Label>
-                <Select value={orderDir} onValueChange={setOrderDir}>
-                  <SelectTrigger id="orderDir">
-                    <SelectValue placeholder="Dirección" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="asc">Ascendente</SelectItem>
-                    <SelectItem value="desc">Descendente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      {categoriasConcurso.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Categorías del Concurso</CardTitle>
+            <CardDescription>Categorías disponibles para este concurso</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {categoriasConcurso.map((categoria) => (
+                <Badge
+                  key={categoria.id}
+                  variant={categoria.sexo === "MACHO" ? "default" : "secondary"}
+                  className="px-3 py-1"
+                >
+                  {categoria.nombre}
+                  {categoria.sexo && <span className="ml-1 text-xs">({categoria.sexo === "MACHO" ? "M" : "H"})</span>}
+                </Badge>
+              ))}
             </div>
-            <SheetFooter>
-              <SheetClose asChild>
-                <Button variant="outline" onClick={handleClearFilters}>
-                  Limpiar filtros
-                </Button>
-              </SheetClose>
-              <SheetClose asChild>
-                <Button type="submit">Aplicar filtros</Button>
-              </SheetClose>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9">
-              <ArrowUpDown className="mr-2 h-4 w-4" />
-              Ordenar
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("posicion")
-                setOrderDir("asc")
-              }}
-            >
-              Posición (ascendente)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("posicion")
-                setOrderDir("desc")
-              }}
-            >
-              Posición (descendente)
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("nombre")
-                setOrderDir("asc")
-              }}
-            >
-              Nombre (A-Z)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("nombre")
-                setOrderDir("desc")
-              }}
-            >
-              Nombre (Z-A)
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("raza")
-                setOrderDir("asc")
-              }}
-            >
-              Raza (A-Z)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("raza")
-                setOrderDir("desc")
-              }}
-            >
-              Raza (Z-A)
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("puntaje")
-                setOrderDir("desc")
-              }}
-            >
-              Puntaje (mayor a menor)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setOrderBy("puntaje")
-                setOrderDir("asc")
-              }}
-            >
-              Puntaje (menor a mayor)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={handleExportCSV}>
-          <Download className="mr-2 h-4 w-4" />
-          Exportar
-        </Button>
-        <Button variant="outline" size="sm" onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimir
-        </Button>
-        <Link href={`/dashboard/ganado/nuevo?concursoId=${concurso.id}`}>
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Añadir Ganado
-          </Button>
-        </Link>
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
+
+  function countActiveFilters() {
+    let count = 0
+    if (searchParams.raza) count++
+    if (searchParams.establo) count++
+    return count
+  }
 }
+
+import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"

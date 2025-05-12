@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { format, formatDistance } from "date-fns"
+import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { MoreHorizontal, Pencil, Trash } from "lucide-react"
 import { toast } from "sonner"
@@ -29,37 +29,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Pagination } from "@/components/ui/pagination"
 
-export interface GanadoOverviewTableProps {
+interface GanadoOverviewTableProps {
   ganado: any[]
-  totalItems?: number
-  currentPage?: number
-  pageSize?: number
-  searchParams?: {
-    search?: string
-    concursoId?: string
-    raza?: string
-    establo?: string
-    sexo?: string
-    orderBy?: string
-    orderDir?: "asc" | "desc"
-    page?: string
-    [key: string]: string | undefined
-  }
 }
 
-export function GanadoOverviewTable({ 
-  ganado, 
-  totalItems = 0, 
-  currentPage = 1, 
-  pageSize = 10,
-  searchParams = {}
-}: GanadoOverviewTableProps) {
+export function GanadoOverviewTable({ ganado }: GanadoOverviewTableProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [ganadoToDelete, setGanadoToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const totalPages = Math.ceil(totalItems / pageSize)
 
   const handleDelete = async (id: string) => {
     setIsDeleting(true)
@@ -166,7 +144,7 @@ export function GanadoOverviewTable({
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/ganado/${item.id}/editar`}>
+                          <Link href={`/dashboard/ganado/${item.slug}/editar`}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Editar
                           </Link>
@@ -190,15 +168,6 @@ export function GanadoOverviewTable({
           </TableBody>
         </Table>
       </div>
-
-      {/* {totalPages > 1 && searchParams && (
-        <Pagination
-          totalPages={totalPages}
-          currentPage={currentPage}
-          searchParams={searchParams}
-          baseUrl="/dashboard/ganado"
-        />
-      )} */}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
