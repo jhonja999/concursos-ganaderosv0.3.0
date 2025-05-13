@@ -62,7 +62,7 @@ export default async function HomePage() {
         </div>
 
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-background z-1"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-neutral-900 z-1"></div>
 
         {/* Contenido Hero - Centrado vertical y horizontalmente */}
         <div className="container mx-auto relative z-40 h-3/6 flex flex-col items-center justify-center text-center px-4 md:px-6">
@@ -88,7 +88,7 @@ export default async function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-white hover:bg-white/20 rounded-full transition-transform duration-300 hover:scale-105 active:scale-95"
+                  className="border-white text-black hover:bg-white/20 rounded-full transition-transform duration-300 hover:scale-105 active:scale-95"
                 >
                   Explorar Ganado
                 </Button>
@@ -102,7 +102,7 @@ export default async function HomePage() {
       </section>
 
       {/* Concursos Destacados */}
-      <section className="w-full py-12 md:py-24 bg-background text-center">
+      <section className="w-full py-12 md:py-24 bg-background text-center bg-neutral-900">
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="space-y-2 max-w-3xl mx-auto">
