@@ -88,7 +88,7 @@ export default async function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-black hover:bg-white/20 rounded-full transition-transform duration-300 hover:scale-105 active:scale-95"
+                  className="border-white text-black dark:text-white hover:bg-white/20 rounded-full transition-transform duration-300 hover:scale-105 active:scale-95"
                 >
                   Explorar Ganado
                 </Button>
