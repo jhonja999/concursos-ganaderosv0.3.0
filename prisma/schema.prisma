@@ -33,32 +33,315 @@ enum Role {
   ADMIN
 }
 
+/// Tipos de concurso
+enum ContestType {
+  LIVESTOCK
+  COFFEE_PRODUCTS
+  GENERAL_PRODUCTS
+}
+
+/// Estados de concurso
+enum ContestStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  JUDGING
+  COMPLETED
+  CANCELLED
+}
+
+/// Roles específicos para concursos
+enum ContestRole {
+  CONTEST_ADMINISTRATOR
+  JUDGE
+  PARTICIPANT
+  PUBLIC_VIEWER
+}
+
+/// Estados de participación
+enum ParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Estados de entrada/submission
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  JUDGED
+  DISQUALIFIED
+}
+
 // ---------------------------------------------------------
 // MODELO DE USUARIO (opcional, si usas Clerk con un clerkId)
 // ---------------------------------------------------------
 model User {
   id        String   @id @default(cuid())
   clerkId   String   @unique
+  auth0Id   String?  @unique // Add Auth0 support
   nombre    String?
   email     String   @unique
-  slug      String?  @unique // Add slug field for user profiles
+  slug      String?  @unique
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Ejemplo: relaciones con reseñas, pedidos, wishlist, etc.
+  // Contest-related relationships
+  contestRoles      ContestUserRole[]
+  participations    ContestParticipation[]
+  submissions       ContestSubmission[]
+  judgingAssignments JudgingAssignment[]
+  scores            JudgingScore[]
+
+  // Existing relationships
   reviews   Review[]
   orders    Order[]
   wishlist  Wishlist[]
   cart      CartItem[]
-
-  // Si lo deseas, relación con Contact o Event
-  Contact Contact[]
-  Event   Event[]
+  Contact   Contact[]
+  Event     Event[]
 }
 
 // ---------------------------------------------------------
-// MODELO DE COMPAÑÍA (EMPRESA)
+// NUEVOS MODELOS PARA SISTEMA DE CONCURSOS
+// ---------------------------------------------------------
+
+/// Modelo principal de concurso
+model Contest {
+  id                String        @id @default(cuid())
+  name              String
+  slug              String        @unique
+  description       String?       @db.Text
+  type              ContestType
+  status            ContestStatus @default(DRAFT)
+  
+  // Fechas importantes
+  registrationStart DateTime
+  registrationEnd   DateTime
+  contestStart      DateTime
+  contestEnd        DateTime
+  resultsPublished  DateTime?
+  
+  // Configuración
+  maxParticipants   Int?
+  entryFee          Float?        @default(0)
+  rules             String?       @db.Text
+  prizes            String?       @db.Text
+  
+  // Metadatos
+  isPublic          Boolean       @default(true)
+  isFeatured        Boolean       @default(false)
+  bannerImage       String?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relaciones
+  companyId         String
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  categories        ContestCategory[]
+  userRoles         ContestUserRole[]
+  participations    ContestParticipation[]
+  submissions       ContestSubmission[]
+  judgingCriteria   JudgingCriteria[]
+  judgingAssignments JudgingAssignment[]
+
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+}
+
+/// Categorías específicas de cada concurso
+model ContestCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  order       Int      @default(0)
+  
+  // Restricciones específicas por tipo de concurso
+  ageMin      Int?     // Para ganado: edad mínima en días
+  ageMax      Int?     // Para ganado: edad máxima en días
+  sexo        Sexo?    // Para ganado: restricción de sexo
+  
+  // Para productos de café y generales
+  productType String?  // Tipo de producto específico
+  weightMin   Float?   // Peso mínimo
+  weightMax   Float?   // Peso máximo
+  
+  maxEntries  Int?     // Máximo de entradas por participante en esta categoría
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  contestId   String
+  contest     Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  
+  submissions ContestSubmission[]
+  judgingCriteria JudgingCriteria[]
+
+  @@index([contestId])
+}
+
+/// Roles de usuarios en concursos específicos
+model ContestUserRole {
+  id        String      @id @default(cuid())
+  role      ContestRole
+  assignedAt DateTime   @default(now())
+  
+  // Relaciones
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contestId String
+  contest   Contest     @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contestId, role])
+  @@index([userId])
+  @@index([contestId])
+}
+
+/// Participaciones en concursos
+model ContestParticipation {
+  id              String              @id @default(cuid())
+  status          ParticipationStatus @default(PENDING)
+  registeredAt    DateTime            @default(now())
+  approvedAt      DateTime?
+  notes           String?             @db.Text
+  
+  // Relaciones
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contestId       String
+  contest         Contest             @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  
+  submissions     ContestSubmission[]
+
+  @@unique([userId, contestId])
+  @@index([userId])
+  @@index([contestId])
+}
+
+/// Entradas/submissions a concursos
+model ContestSubmission {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?          @db.Text
+  status          SubmissionStatus @default(DRAFT)
+  
+  // Metadatos específicos por tipo
+  metadata        Json?            // Datos flexibles según el tipo de concurso
+  
+  submittedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relaciones
+  participationId String
+  participation   ContestParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        ContestCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  // Para ganado existente (compatibilidad)
+  ganadoId        String?
+  ganado          Ganado?          @relation(fields: [ganadoId], references: [id])
+  
+  media           SubmissionMedia[]
+  scores          JudgingScore[]
+
+  @@index([participationId])
+  @@index([categoryId])
+  @@index([ganadoId])
+}
+
+/// Media asociado a submissions
+model SubmissionMedia {
+  id           String   @id @default(cuid())
+  type         String   // 'image', 'video', 'document'
+  url          String
+  filename     String
+  mimeType     String
+  size         Int
+  isPrimary    Boolean  @default(false)
+  caption      String?
+  
+  createdAt    DateTime @default(now())
+
+  // Relaciones
+  submissionId String
+  submission   ContestSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+}
+
+/// Criterios de evaluación
+model JudgingCriteria {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  weight      Float    @default(1.0) // Peso del criterio en la puntuación final
+  maxScore    Int      @default(100)
+  order       Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  contestId   String?
+  contest     Contest? @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    ContestCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  scores      JudgingScore[]
+
+  @@index([contestId])
+  @@index([categoryId])
+}
+
+/// Asignaciones de jueces
+model JudgingAssignment {
+  id        String   @id @default(cuid())
+  assignedAt DateTime @default(now())
+  
+  // Relaciones
+  judgeId   String
+  judge     User     @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  contestId String
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([judgeId, contestId])
+  @@index([judgeId])
+  @@index([contestId])
+}
+
+/// Puntuaciones de jueces
+model JudgingScore {
+  id          String   @id @default(cuid())
+  score       Float
+  comments    String?  @db.Text
+  
+  scoredAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  judgeId     String
+  judge       User     @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  submissionId String
+  submission  ContestSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  criteriaId  String
+  criteria    JudgingCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+
+  @@unique([judgeId, submissionId, criteriaId])
+  @@index([judgeId])
+  @@index([submissionId])
+  @@index([criteriaId])
+}
+
+// ---------------------------------------------------------
+// MODELO DE COMPAÑÍA (EMPRESA) - ACTUALIZADO
 // ---------------------------------------------------------
 model Company {
   id          String    @id @default(cuid())
@@ -68,26 +351,29 @@ model Company {
   descripcion String?
   ubicacion   String?
   website     String?
-  isFeatured  Boolean   @default(false) // Destacar la empresa
-  isPublished Boolean   @default(false) // Indica si la empresa está publicada
+  isFeatured  Boolean   @default(false)
+  isPublished Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  // Relación con Concursos, Contactos, Eventos, etc.
+  // Relaciones existentes
   concursos Concurso[]
   contacts  Contact[]
   events    Event[]
   products  Product[]
+  
+  // Nueva relación con concursos del nuevo sistema
+  contests  Contest[]
 }
 
 // ---------------------------------------------------------
-// MODELO DE CONCURSO
+// MODELO DE CONCURSO EXISTENTE - MANTENIDO PARA COMPATIBILIDAD
 // ---------------------------------------------------------
 model Concurso {
   id          String   @id @default(cuid())
   nombre      String
   descripcion String?
-  slug        String   @unique // Add slug field for concursos
+  slug        String   @unique
   fechaInicio DateTime
   fechaFin    DateTime?
   isFeatured  Boolean  @default(false)
@@ -95,88 +381,83 @@ model Concurso {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relación con la compañía
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  // Relación N-N con Ganado
   ganadoEnConcurso GanadoEnConcurso[]
-  
-  // Relación con Categorías específicas del concurso
   categorias ConcursoCategoria[]
 
   @@index([companyId])
 }
 
 // ---------------------------------------------------------
-// MODELO DE CATEGORÍA DE CONCURSO
+// MODELO DE CATEGORÍA DE CONCURSO EXISTENTE
 // ---------------------------------------------------------
 model ConcursoCategoria {
   id          String   @id @default(cuid())
   nombre      String
   descripcion String?
   orden       Int      @default(0)
-  sexo        Sexo?    // Opcional: si la categoría es específica para un sexo
-  edadMinima  Int?     // Edad mínima en días (opcional)
-  edadMaxima  Int?     // Edad máxima en días (opcional)
+  sexo        Sexo?
+  edadMinima  Int?
+  edadMaxima  Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relación con el concurso
   concursoId  String
   concurso    Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
   
-  // Relación con Ganado
   ganado      Ganado[]
 
   @@index([concursoId])
 }
 
 // ---------------------------------------------------------
-// MODELO DE GANADO
+// MODELO DE GANADO - ACTUALIZADO
 // ---------------------------------------------------------
 model Ganado {
   id           String   @id @default(cuid()) @map("_id")
   nombre       String
-  slug         String   @unique // Add slug field for ganado
+  slug         String   @unique
   fechaNac     DateTime?
-  /* diasNacida   Int? */
-  categoria    String?      // Campo antiguo para compatibilidad
-  subcategoria String?      // Campo antiguo para compatibilidad
+  categoria    String?
+  subcategoria String?
   establo      String?
   remate       Boolean?
-  propietario  String?      // Mantener para compatibilidad
+  propietario  String?
   descripcion  String?
   raza         String?
-  sexo         Sexo         // Enum: MACHO / HEMBRA
+  sexo         Sexo
   numRegistro  String?      
   puntaje      Int?
   isFeatured   Boolean      @default(false)
-  isPublished  Boolean      @default(false) // Si el ganado se muestra o no
-  isGanadora   Boolean      @default(false) // Indica si fue ganadora
-  premios      String[]     // Ej. ["Gran Campeón", "Mejor ubre"]
+  isPublished  Boolean      @default(false)
+  isGanadora   Boolean      @default(false)
+  premios      String[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  // Relación N-N con Concursos
   ganadoEnConcurso GanadoEnConcurso[]
 
-  // Relación con Criador
   criadorId    String?
   criador      Criador?     @relation(fields: [criadorId], references: [id])
   
-  // Relación con Categoría de Concurso
   categoriaConcursoId String?
   categoriaConcurso   ConcursoCategoria? @relation(fields: [categoriaConcursoId], references: [id])
 
-  // Si usas la tabla pivote GanadoImage
   GanadoImage GanadoImage[]
+  
+  // Nueva relación con submissions del nuevo sistema
+  contestSubmissions ContestSubmission[]
 
   @@index([criadorId])
   @@index([categoriaConcursoId])
 }
 
-// Añadir después del modelo Ganado
+// ---------------------------------------------------------
+// RESTO DE MODELOS EXISTENTES (SIN CAMBIOS)
+// ---------------------------------------------------------
+
 model Criador {
   id          String   @id @default(cuid())
   nombre      String
@@ -188,11 +469,9 @@ model Criador {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // Relación con Ganado
   ganado      Ganado[]
 }
 
-// Tabla pivote: Ganado <-> Concurso
 model GanadoEnConcurso {
   id         String   @id @default(cuid())
   ganadoId   String
@@ -200,22 +479,13 @@ model GanadoEnConcurso {
   posicion   Int?
   creadoAt   DateTime @default(now())
   
-  // Relaciones
   ganado     Ganado   @relation(fields: [ganadoId], references: [id], onDelete: Cascade)
   concurso   Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
-  
-  // Si quieres añadir la relación con categoría, deberías añadir esto:
-  // categoriaId String?
-  // categoria   ConcursoCategoria? @relation(fields: [categoriaId], references: [id])
 
   @@index([ganadoId])
   @@index([concursoId])
-  // @@index([categoriaId]) // Si añades la relación con categoría
 }
 
-// ---------------------------------------------------------
-// MODELO DE IMAGEN
-// ---------------------------------------------------------
 model Image {
   id        String   @id @default(cuid())
   url       String   @unique
@@ -226,7 +496,6 @@ model Image {
   GanadoImage GanadoImage[]
 }
 
-// Pivote para relacionar Ganado con múltiples imágenes
 model GanadoImage {
   id         String @id @default(cuid())
   ganadoId   String
@@ -242,9 +511,6 @@ model GanadoImage {
   @@index([imageId])
 }
 
-// ---------------------------------------------------------
-// MODELO CONTACT (OPCIONAL)
-// ---------------------------------------------------------
 model Contact {
   id        String   @id @default(cuid())
   name      String
@@ -258,15 +524,12 @@ model Contact {
   updatedAt DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  User    User[]  // varios users, si lo deseas
+  User    User[]
 
   @@index([companyId])
   @@index([userId])
 }
 
-// ---------------------------------------------------------
-// MODELO EVENT (OPCIONAL)
-// ---------------------------------------------------------
 model Event {
   id          String   @id @default(cuid())
   companyId   String
@@ -282,14 +545,11 @@ model Event {
   updatedAt   DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id])
-  User    User[]  // varios users, si deseas
+  User    User[]
 
   @@index([companyId])
 }
 
-// ---------------------------------------------------------
-// MODELOS E-COMMERCE (SOLO SI LOS NECESITAS)
-// ---------------------------------------------------------
 model Category {
   id          String       @id @default(cuid())
   name        String

@@ -11,6 +11,9 @@ import {
   Users,
   Settings,
   Home,
+  Award,
+  Coffee,
+  ShoppingBag,
 } from "lucide-react";
 import { MilkIcon as Cow } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,6 +49,26 @@ const items = [
         title: "Ganado",
         href: "/dashboard/ganado",
         icon: Cow,
+      },
+    ],
+  },
+  {
+    title: "Nuevo Sistema",
+    items: [
+      {
+        title: "Concursos",
+        href: "/dashboard/contests",
+        icon: Award,
+      },
+      {
+        title: "Concursos de Café",
+        href: "/dashboard/contests?type=COFFEE_PRODUCTS",
+        icon: Coffee,
+      },
+      {
+        title: "Concursos de Productos",
+        href: "/dashboard/contests?type=GENERAL_PRODUCTS",
+        icon: ShoppingBag,
       },
     ],
   },
@@ -114,7 +137,7 @@ export function DashboardNav() {
                           href={subItem.href}
                           icon={subItem.icon}
                           title={subItem.title}
-                          isActive={pathname === subItem.href}
+                          isActive={pathname === subItem.href || pathname.startsWith(`${subItem.href}/`)}
                         />
                       ))}
                     </div>

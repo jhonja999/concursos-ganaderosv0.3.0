@@ -1,20 +1,51 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import { getAuth } from '@auth0/nextjs-auth0/edge'
 
-const isAdminRoute = createRouteMatcher(['/admin(.*)', '/dashboard(.*)']) //agregar rutas protegidas
+// Define protected routes
+const isAdminRoute = createRouteMatcher(['/admin(.*)', '/dashboard(.*)'])
+const isContestRoute = createRouteMatcher(['/contests/(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
-  // Protect all routes starting with `/admin` or `/dashboard`
+  // Check if it's a protected route
   if (isAdminRoute(req)) {
+    // Try Clerk authentication first
     const session = await auth();
     const userRole = session.sessionClaims?.metadata?.role;
     
-    // Permitir acceso si el usuario tiene el rol 'dashboard_admin' o 'org:admin'
-    if (userRole !== 'dashboard_admin' && userRole !== 'admin') {
-      const url = new URL('/', req.url)
-      return NextResponse.redirect(url)
+    // Allow access if the user has the role 'dashboard_admin' or 'admin'
+    if (userRole === 'dashboard_admin' || userRole === 'admin') {
+      return NextResponse.next()
     }
+    
+    // If not authenticated with Clerk, try Auth0
+    try {
+      const { isAuthenticated, user } = getAuth(req)
+      
+      if (isAuthenticated && user && (
+        user.role === 'admin' || 
+        user.role === 'dashboard_admin' || 
+        user.role === 'CONTEST_ADMINISTRATOR'
+      )) {
+        return NextResponse.next()
+      }
+    } catch (error) {
+      console.error('Auth0 authentication error:', error)
+    }
+    
+    // If not authenticated with either provider, redirect to login
+    const url = new URL('/sign-in', req.url)
+    return NextResponse.redirect(url)
   }
+  
+  // For contest routes, allow public access but check for specific permissions
+  if (isContestRoute(req)) {
+    // Allow public access by default
+    return NextResponse.next()
+  }
+  
+  // For all other routes, proceed normally
+  return NextResponse.next()
 })
 
 export const config = {
